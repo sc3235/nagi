@@ -4258,8 +4258,8 @@ function renderCalmHistory(container) {
 
   if (!entries.length) {
     container.innerHTML = `
-      <div class="date-line">Calm</div>
-      <h1 class="greeting">Narrations<em>.</em></h1>
+      <div class="date-line" style="text-align:center">Calm</div>
+      <h1 class="greeting">History<em>.</em></h1>
       <div class="empty">No narrations yet — start a grounding narration to see it here.</div>
     `;
     return;
@@ -4291,9 +4291,15 @@ function renderCalmHistory(container) {
   }).join('');
 
   container.innerHTML = `
-    <div class="date-line">Calm</div>
-    <h1 class="greeting">Narrations<em>.</em></h1>
-    ${entriesHtml}
+    <div class="date-line" style="text-align:center">Calm</div>
+    <h1 class="greeting">History<em>.</em></h1>
+    <details class="tk-hist-section" open>
+      <summary class="tk-hist-summary">
+        <span>Narrations</span>
+        <span class="tk-hist-count">${entries.length}</span>
+      </summary>
+      <div class="tk-hist-body">${entriesHtml}</div>
+    </details>
   `;
 
   container.querySelectorAll('.ch-edit').forEach(btn => {
