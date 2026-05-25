@@ -3185,13 +3185,20 @@ function renderToolThoughtRecord(panel) {
     panel.querySelectorAll('.tk-redirect-btn[data-action]').forEach(btn => {
       btn.addEventListener('click', () => {
         s.chosenAction = btn.dataset.action;
-        tkSaveRecord('rumination_break', { action: s.chosenAction, ruminationText: s.ruminationText, bodyText: s.bodyText });
         panel.innerHTML = `
           <div class="wt-step-heading">Good.</div>
-          <div class="wt-tool-helper" style="margin-bottom:16px">Come back to this when you're ready.</div>
-          <button class="wt-primary-btn" id="rb-done">Done</button>
+          <div class="wt-tool-helper" style="margin-bottom:10px">Come back to this when you're ready.</div>
+          <div class="tk-save-row">
+            <button class="wt-primary-btn" id="rb-save">Save</button>
+            <button class="tk-discard-btn" id="rb-skip">Skip</button>
+          </div>
         `;
-        panel.querySelector('#rb-done').addEventListener('click', tkBackToLanding);
+        panel.querySelector('#rb-save').addEventListener('click', () => {
+          tkSaveRecord('rumination_break', { action: s.chosenAction, ruminationText: s.ruminationText, bodyText: s.bodyText });
+          showSaved('Record saved');
+          tkBackToLanding();
+        });
+        panel.querySelector('#rb-skip').addEventListener('click', tkBackToLanding);
       });
     });
     panel.querySelector('#rb-goto-calm').addEventListener('click', () => {
@@ -4383,7 +4390,10 @@ function renderHome() {
         </button>`;
       }).join('')}
     </div>
-    <button class="action-btn" id="home-options-btn" style="margin-top:16px">Options</button>
+    <div style="border-top:1px solid var(--line);margin:24px 0 14px;"></div>
+    <div style="display:flex;justify-content:center">
+      <button class="action-btn" id="home-options-btn" style="width:auto;border-radius:999px;padding:7px 18px;font-size:13px;margin:0">Options</button>
+    </div>
   `;
 
   PHASES.forEach(p => {
@@ -5086,24 +5096,26 @@ function renderGrounding() {
   if (groundingState.mode === 'narration') {
     const savedText = (calmStore.narrations || {})[todayKey()] || '';
     if (!groundingState.narration && savedText) groundingState.narration = savedText;
-    let narrTimer;
     panel.innerHTML = `
       <div class="calm-heading">Narration</div>
-      <p class="calm-sub">Describe your current moment in third person, as if you are a narrator in a novel. Observe every detail without judgment. Saved locally by date.</p>
+      <p class="calm-sub">Describe your current moment in third person, as if you are a narrator in a novel. Observe every detail without judgment.</p>
       <textarea class="grd-narration" id="grd-narration" placeholder="She sat by the window, noticing the weight of the afternoon light across her hands…">${escapeHtml(groundingState.narration)}</textarea>
-      <button class="calm-start-btn" id="grd-narr-done" style="background:var(--slate)">Done</button>
+      <div class="tk-save-row">
+        <button class="wt-primary-btn" id="grd-narr-save" style="background:var(--slate);margin-bottom:0">Save</button>
+        <button class="tk-discard-btn" id="grd-narr-done">Skip</button>
+      </div>
     `;
     document.getElementById('grd-narration').addEventListener('input', e => {
       groundingState.narration = e.target.value;
-      clearTimeout(narrTimer);
-      narrTimer = setTimeout(() => {
-        calmStore.narrations[todayKey()] = groundingState.narration;
-        persistCalm();
-      }, 600);
     });
-    document.getElementById('grd-narr-done').addEventListener('click', () => {
+    document.getElementById('grd-narr-save').addEventListener('click', () => {
       calmStore.narrations[todayKey()] = groundingState.narration;
       persistCalm();
+      showSaved('Narration saved');
+      groundingState.mode = 'idle';
+      renderGrounding();
+    });
+    document.getElementById('grd-narr-done').addEventListener('click', () => {
       groundingState.mode = 'idle';
       renderGrounding();
     });
