@@ -3488,7 +3488,7 @@ function renderToolThoughtWorkthrough(panel) {
       panel.innerHTML = `
         ${header('The thought')}
         <div class="wt-step-heading">What belief made you feel this way?</div>
-        <textarea class="wt-textarea" id="twt-thought" placeholder="${escapeHtml(beliefMild + '\n—\n' + beliefSerious)}" style="min-height:130px">${escapeHtml(s.thought)}</textarea>
+        <textarea class="wt-textarea" id="twt-thought" placeholder="${escapeHtml(beliefMild + '\n' + beliefSerious)}" style="min-height:130px">${escapeHtml(s.thought)}</textarea>
         <div class="sc-row">
           <span class="wt-tool-helper">Is this belief about yourself?</span>
           <button type="button" class="sc-chip ${s.thoughtIsAboutSelf === 'yes' ? 'selected' : ''}" data-sf="yes">Yes</button>
@@ -3499,7 +3499,7 @@ function renderToolThoughtWorkthrough(panel) {
           <textarea class="rcs-notes-textarea" id="twt-friend" placeholder="He made a call that didn't land. That happens to everyone who's actually trying." style="min-height:90px">${escapeHtml(s.selfAsFriend)}</textarea>
         ` : ''}
         <div class="wt-tool-helper" style="margin-top:14px">Is your immediate reaction trying to protect you from something?</div>
-        <textarea class="wt-textarea" id="twt-protect" placeholder="${escapeHtml(protectMild + '\n—\n' + protectSerious)}" style="min-height:120px">${escapeHtml(s.protectionFrom)}</textarea>
+        <textarea class="wt-textarea" id="twt-protect" placeholder="${escapeHtml(protectMild + '\n' + protectSerious)}" style="min-height:120px">${escapeHtml(s.protectionFrom)}</textarea>
         <button class="wt-primary-btn" id="twt-next" style="margin-top:4px">Next →</button>
         <button class="wt-back-btn" id="twt-prev" style="margin-top:8px">← back</button>
       `;
@@ -3520,7 +3520,7 @@ function renderToolThoughtWorkthrough(panel) {
       const pst = PAST_STEPS[s.step];
       const isCbt = (s.step === 4);
       const isImmediate = (s.step === 2);
-      const placeholder = `${pst.mild}\n—\n${pst.serious}`;
+      const placeholder = `${pst.mild}\n${pst.serious}`;
       panel.innerHTML = `
         ${header(pst.label)}
         <div class="wt-step-heading">${escapeHtml(pst.prompt)}</div>
