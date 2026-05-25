@@ -109,19 +109,20 @@
   #sleep-tabs button.active  { background: var(--sky); }
   #calm-tabs button.active    { background: var(--sage); }
   #toolkit-tabs button.active { background: var(--amber); }
-  .tk-hist-section { border-bottom: 1px solid var(--rule); }
-  .tk-hist-section:last-child { border-bottom: none; }
+  .tk-hist-section { margin-bottom: 20px; }
+  .tk-hist-section:last-child { margin-bottom: 0; }
   .tk-hist-summary {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 0; cursor: pointer; list-style: none; user-select: none;
+    padding: 8px 0; cursor: pointer; list-style: none; user-select: none;
     font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
     text-transform: uppercase; color: var(--ink-dim);
   }
   .tk-hist-summary::-webkit-details-marker { display: none; }
   .tk-hist-count { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
-  .tk-hist-body { padding-bottom: 8px; }
+  .tk-hist-body { padding-bottom: 4px; }
   .tk-hist-rec {
-    background: var(--card); border-radius: 10px; padding: 14px; margin-bottom: 10px;
+    background: var(--bg-elev); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 14px; margin-bottom: 8px;
   }
   .tk-hist-rec-head {
     display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;
@@ -132,7 +133,7 @@
     color: var(--ink-faint); margin: 8px 0 2px;
   }
   .tk-hist-field-val { font-size: 14px; line-height: 1.5; color: var(--ink); white-space: pre-wrap; }
-  .tk-hist-edit-form { background: var(--card); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+  .tk-hist-edit-form { background: var(--bg-card); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
   .tk-hist-edit-actions { display: flex; gap: 10px; margin-top: 10px; }
 
   main { padding: 0 20px 120px; max-width: 560px; margin: 0 auto; text-align: left; }
@@ -3172,17 +3173,13 @@ function renderToolThoughtRecord(panel) {
       panel.querySelector('#rb-prev').addEventListener('click', () => { s.rumStep = 2; renderWorkthrough(); });
       return;
     }
-    const REDIRECTS = ['Stand up and stretch', 'Get a glass of water', 'Wash your face', 'Step outside for a minute'];
+    const REDIRECTS = ['Stand up and stretch', 'Get a glass of water', 'Wash your face', 'Step outside for a minute', 'Do a calming exercise (home → calm)'];
     panel.innerHTML = `
       ${header(4, RUM_TOTAL, 'Break the loop')}
       <div class="wt-step-heading">Pick one thing to do right now:</div>
       <div class="tk-redirect-options">
         ${REDIRECTS.map(a => `<button class="tk-redirect-btn" data-action="${escapeHtml(a)}">${escapeHtml(a)}</button>`).join('')}
       </div>
-      <div class="wt-tool-label" style="margin:16px 0 8px">and/or</div>
-      <button class="tk-redirect-btn" id="rb-goto-calm" style="border-color:rgba(61,88,112,0.40);background:rgba(61,88,112,0.06);display:flex;align-items:center;gap:10px">
-        <span>Try a calming technique (redirect)</span>
-      </button>
       <button class="wt-back-btn" id="rb-prev" style="margin-top:14px">← back</button>
     `;
     panel.querySelectorAll('.tk-redirect-btn[data-action]').forEach(btn => {
@@ -3435,16 +3432,16 @@ function renderToolThoughtWorkthrough(panel) {
   if (s.branch === 'past') {
     const PAST_STEPS = {
       1: { label: 'Situation',          field: 'situation',         prompt: 'What\'s happening?',
-           mild:    'Manager gave me critical feedback — specific things they said they want me to do differently.',
+           mild:    'Manager gave me critical feedback — specific things they said they want me to do differently. //',
            serious: 'My manager has been consistently undermining me in meetings and taking credit for my work. It\'s been going on for months.' },
       2: { label: 'Immediate reaction', field: 'immediateReaction', prompt: 'How do you feel? What\'s your immediate reaction?',
-           mild:    'Defensive. Want to explain myself and justify every decision I made.',
+           mild:    'Defensive. Want to explain myself and justify every decision I made. //',
            serious: 'Want to go quiet, stop contributing, make myself invisible.' },
       4: { label: 'CBT check',          field: 'cbt',               prompt: 'Is there a more accurate way to read this?',
-           mild:    'Critical feedback is normal and often a sign they\'re invested in you. One conversation isn\'t a verdict on your performance.',
+           mild:    'Critical feedback is normal and often a sign they\'re invested in you. One conversation isn\'t a verdict on your performance. //',
            serious: 'I may have less power than my manager, but I\'m not powerless. There are people and options I haven\'t fully explored yet.' },
       5: { label: 'ACT check',          field: 'act',               prompt: 'Even if this is true, what do you want to do? Would you like to respond differently than your immediate reaction?',
-           mild:    'Even if I have been underperforming, that\'s actionable. I want to listen properly rather than defend.',
+           mild:    'Even if I have been underperforming, that\'s actionable. I want to listen properly rather than defend. //',
            serious: 'Even if the power imbalance is real, I want to protect myself and not let this define my career. Going invisible makes it worse.' },
     };
 
@@ -4052,7 +4049,7 @@ function renderTkHistory(container) {
   const isEmpty = !beliefRecs.length && !rumRecs.length && !pastRecs.length && !futureRecs.length && !valuesRecs.length && !exposures.length;
   if (isEmpty) {
     container.innerHTML = `
-      <div class="date-line">Toolkit</div>
+      <div class="date-line" style="text-align:center">Toolkit</div>
       <h1 class="greeting">History<em>.</em></h1>
       <div class="empty">No records yet — complete a tool to see it here.</div>
     `;
@@ -4084,7 +4081,7 @@ function renderTkHistory(container) {
   }).join('');
 
   container.innerHTML = `
-    <div class="date-line">Toolkit</div>
+    <div class="date-line" style="text-align:center">Toolkit</div>
     <h1 class="greeting">History<em>.</em></h1>
     ${sectionsHtml}
   `;
