@@ -1227,9 +1227,9 @@
     font-variation-settings: "opsz" 144; color: var(--ink); line-height: 1.1;
   }
   .rcs-close {
-    width: 32px; height: 32px; border-radius: 50%;
+    width: 44px; height: 44px; border-radius: 50%;
     border: 1px solid var(--line); background: var(--bg-elev);
-    font-size: 18px; line-height: 1; color: var(--ink-dim);
+    font-size: 20px; line-height: 1; color: var(--ink-dim);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; cursor: pointer; padding: 0;
   }
@@ -4607,6 +4607,7 @@ function sleepHistoryEntryHtml(key) {
 
 // ---------- Screen routing ----------
 function showScreen(name) {
+  window.scrollTo(0, 0);
   if (currentScreen === 'calm' && name !== 'calm') {
     if (breathState.interval) { clearInterval(breathState.interval); breathState.interval = null; breathState.running = false; }
     if (pmrState.interval)    { clearInterval(pmrState.interval);    pmrState.interval = null;    pmrState.mode = 'idle'; }
@@ -5433,6 +5434,15 @@ function getArtworkDataUrl() {
 document.fonts.load('500 268px "Shippori Mincho"', '凪')
   .then(() => { if (_artworkDataUrl === null) getArtworkDataUrl(); })
   .catch(() => {});
+
+// Prevent iOS Safari from zooming in on input/textarea focus
+(function() {
+  const vp = document.querySelector('meta[name="viewport"]');
+  const base = vp.content;
+  const noZoom = base + ', maximum-scale=1';
+  document.addEventListener('focusin',  e => { if (e.target.matches('input, textarea')) vp.content = noZoom; });
+  document.addEventListener('focusout', e => { if (e.target.matches('input, textarea')) vp.content = base; });
+})();
 </script>
 </body>
 </html>
