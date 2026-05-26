@@ -135,6 +135,20 @@
   .tk-hist-field-val { font-size: 14px; line-height: 1.5; color: var(--ink); white-space: pre-wrap; }
   .tk-hist-edit-form { background: var(--bg-card); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
   .tk-hist-edit-actions { display: flex; gap: 10px; margin-top: 10px; }
+  .tk-hist-inline {
+    width: 100%; background: transparent; border: none;
+    border-bottom: 1px solid transparent; padding: 2px 0;
+    font: inherit; font-size: 14px; color: var(--ink);
+    resize: vertical; box-sizing: border-box; line-height: 1.5;
+    transition: border-color 0.15s; cursor: pointer;
+  }
+  .tk-hist-inline:hover { border-bottom-color: var(--line); }
+  .tk-hist-inline:focus { outline: none; border-bottom-color: var(--amber); cursor: text; }
+  .tk-hist-inline::placeholder { color: var(--ink-faint); font-style: italic; }
+  .tk-hist-range-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .tk-hist-range-val { font-family: var(--mono); font-size: 13px; color: var(--ink-faint); min-width: 36px; }
+  .tk-hist-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+  .tk-hist-field-group { margin-bottom: 2px; }
 
   main { padding: 0 20px 120px; max-width: 560px; margin: 0 auto; text-align: left; }
 
@@ -2639,10 +2653,8 @@ let wtState = {
 };
 
 // Toolkit history state
-let tkHistTab       = 'main';
-let tkHistEditId    = null;
-let tkHistEditDraft = {};
-let tkHistClosedSecs  = new Set();
+let tkHistTab        = 'main';
+let tkHistClosedSecs = new Set();
 let tkExpClosedThemes = new Set();
 let tkExpEditId     = null;
 let tkExpEditDraft  = null;
@@ -3137,7 +3149,7 @@ function renderToolThoughtRecord(panel) {
       panel.innerHTML = `
         ${header(1, RUM_TOTAL, 'Name it')}
         <div class="wt-step-heading">What are you ruminating about?</div>
-        <textarea class="wt-textarea" id="rb-rumination" placeholder="Describe what's looping in your mind..." style="min-height:100px">${escapeHtml(s.ruminationText)}</textarea>
+        <textarea class="wt-textarea" id="rb-rumination" placeholder="Whirling thoughts..." style="min-height:100px">${escapeHtml(s.ruminationText)}</textarea>
         <button class="wt-primary-btn" id="rb-next">Next →</button>
         <button class="wt-back-btn" id="rb-prev" style="margin-top:8px">← back</button>
       `;
@@ -3200,10 +3212,6 @@ function renderToolThoughtRecord(panel) {
         });
         panel.querySelector('#rb-skip').addEventListener('click', tkBackToLanding);
       });
-    });
-    panel.querySelector('#rb-goto-calm').addEventListener('click', () => {
-      tkSaveRecord('rumination_break', { action: 'calming_technique', ruminationText: s.ruminationText, bodyText: s.bodyText });
-      showScreen('calm');
     });
     panel.querySelector('#rb-prev').addEventListener('click', () => { s.rumStep = 3; renderWorkthrough(); });
     return;
@@ -3675,7 +3683,7 @@ function renderToolThoughtWorkthrough(panel) {
 }
 
 function renderToolValuesCheck(panel) {
-  const DOMAINS = ['Work', 'Health', 'Friendship', 'Family', 'Other'];
+  const DOMAINS = ['Work', 'Health', 'Friendship', 'Family'];
   const s = wtState.draft._vc || { step: 1, domain: '', personStatement: '', closeness: 3, action: '', sizeChoice: null };
   wtState.draft._vc = s;
 
@@ -3700,20 +3708,29 @@ function renderToolValuesCheck(panel) {
     <div class="wt-step-label">${escapeHtml(label)}</div>`;
 
   if (s.step === 1) {
+    const isCustom = s.domain && !DOMAINS.includes(s.domain);
     panel.innerHTML = `
       ${vcHeader(1, 'Domain')}
       <div class="wt-step-heading">Pick an area of life.</div>
       <div class="tk-domain-chips">
         ${DOMAINS.map(d => `<button class="wt-chip ${s.domain === d ? 'selected' : ''}" data-domain="${escapeHtml(d)}">${escapeHtml(d)}</button>`).join('')}
       </div>
+      <input class="wt-input" id="vc-custom-domain" type="text" placeholder="Custom" style="margin-top:0px;margin-bottom:14px" value="${isCustom ? escapeHtml(s.domain) : ''}">
       <button class="wt-primary-btn" id="vc-next" ${s.domain ? '' : 'disabled'}>Next →</button>
     `;
+    const customInput = panel.querySelector('#vc-custom-domain');
     panel.querySelectorAll('[data-domain]').forEach(btn => {
       btn.addEventListener('click', () => {
         s.domain = btn.dataset.domain;
+        customInput.value = '';
         panel.querySelectorAll('[data-domain]').forEach(b => b.classList.toggle('selected', b.dataset.domain === s.domain));
         panel.querySelector('#vc-next').disabled = false;
       });
+    });
+    customInput.addEventListener('input', () => {
+      s.domain = customInput.value;
+      panel.querySelectorAll('[data-domain]').forEach(b => b.classList.remove('selected'));
+      panel.querySelector('#vc-next').disabled = !customInput.value;
     });
     panel.querySelector('#vc-next').addEventListener('click', () => { s.step = 2; renderWorkthrough(); });
   } else if (s.step === 2) {
@@ -3804,155 +3821,172 @@ function tkFmtTs(ts) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+// ── Field visibility config ─────────────────────────────────────────────────
+// Set visible: false on any field to hide it from history cards.
+const TK_HIST_FIELD_CONFIG = {
+  belief: [
+    { key: 'emotion',          label: 'Emotion',                 visible: true, type: 'text',     placeholder: 'shame, hopelessness, …' },
+    { key: 'intensity',        label: 'Intensity (1–10)',         visible: true, type: 'range',    min: 1, max: 10 },
+    { key: 'facts',            label: 'Facts',                    visible: true, type: 'textarea', placeholder: 'What are the verifiable facts?' },
+    { key: 'thoughts',         label: 'Thoughts',                 visible: true, type: 'textarea', placeholder: 'What are you telling yourself?' },
+    { key: 'evidenceFor',      label: 'Evidence for',             visible: true, type: 'textarea', placeholder: '' },
+    { key: 'evidenceAgainst',  label: 'Evidence against',         visible: true, type: 'textarea', placeholder: '' },
+    { key: 'reinterpret',      label: 'Reinterpretation',         visible: true, type: 'textarea', placeholder: '' },
+    { key: 'newEmotion',       label: 'Updated emotion',          visible: true, type: 'text',     placeholder: 'Still disappointed, but lighter.' },
+    { key: 'newIntensity',     label: 'Updated intensity (1–10)', visible: true, type: 'range',    min: 1, max: 10 },
+    { key: 'reframeNotes',     label: 'Reframe notes',            visible: true, type: 'textarea', placeholder: '' },
+    { key: 'beliefIsAboutSelf',label: 'Belief about self?',       visible: true, type: 'chips',    options: [{value:'yes',label:'Yes'},{value:'no',label:'No'}] },
+    { key: 'selfAsFriend',     label: 'Self as friend',           visible: true, type: 'textarea', placeholder: '' },
+  ],
+  rumination: [
+    { key: 'ruminationText', label: 'What was looping', visible: true, type: 'textarea', placeholder: 'Describe what was looping in your mind…' },
+    { key: 'bodyText',       label: 'Body sensation',   visible: true, type: 'textarea', placeholder: 'chest tight, stomach knotted, …' },
+    { key: 'action',         label: 'Action chosen',    visible: true, type: 'text',     placeholder: '' },
+  ],
+  past: [
+    { key: 'severity',          label: 'Severity',                     visible: true, type: 'chips',    options: [{value:'onetime',label:'One-time'},{value:'serious',label:'Serious / ongoing'}] },
+    { key: 'situation',         label: 'Situation',                    visible: true, type: 'textarea', placeholder: '' },
+    { key: 'immediateReaction', label: 'Immediate reaction',           visible: true, type: 'textarea', placeholder: '' },
+    { key: 'thought',           label: 'Thought',                      visible: true, type: 'textarea', placeholder: '' },
+    { key: 'protectionFrom',    label: 'What you want protection from',visible: true, type: 'textarea', placeholder: '' },
+    { key: 'cbt',               label: 'More accurate reading (CBT)',  visible: true, type: 'textarea', placeholder: '' },
+    { key: 'act',               label: 'What you want to do (ACT)',    visible: true, type: 'textarea', placeholder: '' },
+    { key: 'reframeNotes',      label: 'Reframe notes',                visible: true, type: 'textarea', placeholder: '' },
+    { key: 'thoughtIsAboutSelf',label: 'Thought about self?',          visible: true, type: 'chips',    options: [{value:'yes',label:'Yes'},{value:'no',label:'No'}] },
+    { key: 'selfAsFriend',      label: 'Self as friend',               visible: true, type: 'textarea', placeholder: '' },
+    { key: 'action',            label: 'Small action',                 visible: true, type: 'textarea', placeholder: '' },
+    { key: 'protection',        label: 'Protection plan',              visible: true, type: 'protection_group', subfields: [
+      { key: 'reduce',   label: 'Reduce exposure', placeholder: 'I can stop sharing work-in-progress with them directly…' },
+      { key: 'document', label: 'Document',         placeholder: 'Dates, meetings, specific things said, who was in the room…' },
+      { key: 'support',  label: 'Support network',  placeholder: 'A trusted colleague who\'s witnessed it…' },
+      { key: 'exit',     label: 'Exit plan',        placeholder: 'Updating my CV now. Starting to have quiet conversations…' },
+      { key: 'seek',     label: 'Seek support',     placeholder: 'This is worth talking through with someone I trust…' },
+    ]},
+  ],
+  future: [
+    { key: 'situation',  label: 'Situation',    visible: true, type: 'textarea', placeholder: '' },
+    { key: 'dread',      label: 'The dread',    visible: true, type: 'textarea', placeholder: '' },
+    { key: 'reality',    label: 'Reality check',visible: true, type: 'textarea', placeholder: '' },
+    { key: 'act',        label: 'ACT check',    visible: true, type: 'textarea', placeholder: '' },
+    { key: 'copingPlan', label: 'Coping plan',  visible: true, type: 'textarea', placeholder: '' },
+    { key: 'prepStep',   label: 'Prep step',    visible: true, type: 'textarea', placeholder: '' },
+  ],
+  values: [
+    { key: 'domain',          label: 'Domain',            visible: true, type: 'domain' },
+    { key: 'closeness',       label: 'Closeness (1–5)',   visible: true, type: 'range',    min: 1, max: 5 },
+    { key: 'personStatement', label: 'Identity statement',visible: true, type: 'textarea', placeholder: '' },
+    { key: 'sizeChoice',      label: 'Size',              visible: true, type: 'chips',    options: [{value:'yes',label:'Small step'},{value:'no',label:'Bigger shift'}] },
+    { key: 'action',          label: 'Action',            visible: true, type: 'textarea', placeholder: '' },
+  ],
+};
+
+function tkHistSaveField(store, id, field, value) {
+  let arr, saveFn;
+  if (store === 'belief' || store === 'rumination') { arr = loadTkThought();    saveFn = saveTkThought;    }
+  else if (store === 'past' || store === 'future')  { arr = loadTkSituation(); saveFn = saveTkSituation; }
+  else if (store === 'values')                      { arr = loadTkValues();    saveFn = saveTkValues;    }
+  else return;
+  const rec = arr.find(r => r.id === id);
+  if (!rec) return;
+  if (field.includes('.')) {
+    const [parent, child] = field.split('.');
+    if (rec.data[parent] == null || typeof rec.data[parent] !== 'object') rec.data[parent] = {};
+    rec.data[parent][child] = value;
+  } else {
+    rec.data[field] = value;
+  }
+  saveFn(arr);
+}
+
+function tkRenderHistField(cfg, d, id, store) {
+  if (!cfg.visible) return '';
+  const key = cfg.key, val = d[key];
+  const label = `<div class="tk-hist-field-label">${escapeHtml(cfg.label)}</div>`;
+  const attrs = `data-tkrec="${escapeHtml(id)}" data-tkstore="${escapeHtml(store)}" data-tkfield="${escapeHtml(key)}"`;
+
+  if (cfg.type === 'textarea') {
+    return `${label}<textarea class="tk-hist-inline" ${attrs} placeholder="${escapeHtml(cfg.placeholder||'')}">${escapeHtml(val||'')}</textarea>`;
+  }
+  if (cfg.type === 'text') {
+    return `${label}<input type="text" class="tk-hist-inline" ${attrs} placeholder="${escapeHtml(cfg.placeholder||'')}" value="${escapeHtml(val||'')}">`;
+  }
+  if (cfg.type === 'range') {
+    const v = val != null ? val : cfg.min;
+    return `${label}<div class="tk-hist-range-row">
+      <input type="range" class="wt-slider tk-hist-inline-range" ${attrs} min="${cfg.min}" max="${cfg.max}" value="${v}">
+      <span class="tk-hist-range-val">${v}/${cfg.max}</span>
+    </div>`;
+  }
+  if (cfg.type === 'chips') {
+    const chips = cfg.options.map(o =>
+      `<button class="wt-chip ${val===o.value?'selected':''}" ${attrs} data-tkval="${escapeHtml(o.value)}">${escapeHtml(o.label)}</button>`
+    ).join('');
+    return `${label}<div class="tk-hist-chip-row">${chips}</div>`;
+  }
+  if (cfg.type === 'domain') {
+    const HIST_DOMAINS = ['Work', 'Health', 'Friendship', 'Family', 'Other'];
+    const isCustom = val && !HIST_DOMAINS.includes(val);
+    const chips = HIST_DOMAINS.map(dom =>
+      `<button class="wt-chip ${val===dom?'selected':''}" ${attrs} data-tkval="${escapeHtml(dom)}" data-tkdomchip="">${escapeHtml(dom)}</button>`
+    ).join('');
+    return `${label}<div class="tk-hist-field-group">
+      <div class="tk-hist-chip-row" style="margin-bottom:6px">${chips}</div>
+      <input type="text" class="tk-hist-inline tk-hist-domain-custom" ${attrs} placeholder="Custom…" value="${isCustom ? escapeHtml(val) : ''}">
+    </div>`;
+  }
+  if (cfg.type === 'protection_group') {
+    const obj = (val && typeof val === 'object') ? val : {};
+    return `${label}${cfg.subfields.map(sf => `
+      <div class="tk-hist-field-label" style="margin-top:8px;font-size:9px">${escapeHtml(sf.label)}</div>
+      <textarea class="tk-hist-inline" data-tkrec="${escapeHtml(id)}" data-tkstore="${escapeHtml(store)}" data-tkfield="protection.${escapeHtml(sf.key)}" placeholder="${escapeHtml(sf.placeholder||'')}">${escapeHtml(obj[sf.key]||'')}</textarea>
+    `).join('')}`;
+  }
+  return '';
+}
+
 function tkHistRecActions(id, store) {
   return `<div class="entry-actions">
-    <button class="entry-action-btn" data-tkedit="${id}" data-tkstore="${store}">edit</button>
     <button class="entry-action-btn danger" data-tkdel="${id}" data-tkstore="${store}">delete</button>
   </div>`;
 }
 
 function tkHistBeliefHtml(r) {
-  const d = r.data;
-  if (tkHistEditId === r.id) {
-    return `<div class="tk-hist-edit-form">
-      <div class="tk-hist-field-label">Facts</div>
-      <textarea class="wt-textarea" data-tkf="facts" rows="3">${escapeHtml(tkHistEditDraft.facts||'')}</textarea>
-      <div class="tk-hist-field-label">Thoughts</div>
-      <textarea class="wt-textarea" data-tkf="thoughts" rows="3">${escapeHtml(tkHistEditDraft.thoughts||'')}</textarea>
-      <div class="tk-hist-field-label">Evidence for</div>
-      <textarea class="wt-textarea" data-tkf="evidenceFor" rows="2">${escapeHtml(tkHistEditDraft.evidenceFor||'')}</textarea>
-      <div class="tk-hist-field-label">Evidence against</div>
-      <textarea class="wt-textarea" data-tkf="evidenceAgainst" rows="2">${escapeHtml(tkHistEditDraft.evidenceAgainst||'')}</textarea>
-      <div class="tk-hist-field-label">Reinterpretation</div>
-      <textarea class="wt-textarea" data-tkf="reinterpret" rows="3">${escapeHtml(tkHistEditDraft.reinterpret||'')}</textarea>
-      <div class="tk-hist-field-label">Updated emotion</div>
-      <input class="wt-input" data-tkf="newEmotion" value="${escapeHtml(tkHistEditDraft.newEmotion||'')}" style="margin-bottom:4px" />
-      <div class="tk-hist-edit-actions">
-        <button class="entry-action-btn primary" data-tksave="${r.id}" data-tkstore="belief">save</button>
-        <button class="entry-action-btn" data-tkcancel="">cancel</button>
-      </div>
-    </div>`;
-  }
+  const fields = TK_HIST_FIELD_CONFIG.belief.map(cfg => tkRenderHistField(cfg, r.data, r.id, 'belief')).join('');
   return `<div class="tk-hist-rec">
-    <div class="tk-hist-rec-head">
-      <span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>
-      ${tkHistRecActions(r.id, 'belief')}
-    </div>
-    ${d.emotion ? `<div class="tk-hist-field-label">Emotion</div><div class="tk-hist-field-val">${escapeHtml(d.emotion)} · ${d.intensity||'?'}/10</div>` : ''}
-    ${d.facts   ? `<div class="tk-hist-field-label">Facts</div><div class="tk-hist-field-val">${escapeHtml(d.facts.length>140?d.facts.slice(0,140)+'…':d.facts)}</div>` : ''}
-    ${d.reinterpret ? `<div class="tk-hist-field-label">Reinterpretation</div><div class="tk-hist-field-val">${escapeHtml(d.reinterpret.length>140?d.reinterpret.slice(0,140)+'…':d.reinterpret)}</div>` : ''}
+    <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, 'belief')}</div>
+    ${fields}
   </div>`;
 }
 
 function tkHistRumHtml(r) {
-  const d = r.data;
-  if (tkHistEditId === r.id) {
-    return `<div class="tk-hist-edit-form">
-      <div class="tk-hist-field-label">What was looping</div>
-      <textarea class="wt-textarea" data-tkf="ruminationText" rows="3">${escapeHtml(tkHistEditDraft.ruminationText||'')}</textarea>
-      <div class="tk-hist-field-label">Body sensation</div>
-      <textarea class="wt-textarea" data-tkf="bodyText" rows="2">${escapeHtml(tkHistEditDraft.bodyText||'')}</textarea>
-      <div class="tk-hist-field-label">Action chosen</div>
-      <input class="wt-input" data-tkf="action" value="${escapeHtml(tkHistEditDraft.action||'')}" style="margin-bottom:4px" />
-      <div class="tk-hist-edit-actions">
-        <button class="entry-action-btn primary" data-tksave="${r.id}" data-tkstore="rumination">save</button>
-        <button class="entry-action-btn" data-tkcancel="">cancel</button>
-      </div>
-    </div>`;
-  }
+  const fields = TK_HIST_FIELD_CONFIG.rumination.map(cfg => tkRenderHistField(cfg, r.data, r.id, 'rumination')).join('');
   return `<div class="tk-hist-rec">
-    <div class="tk-hist-rec-head">
-      <span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>
-      ${tkHistRecActions(r.id, 'rumination')}
-    </div>
-    ${d.ruminationText ? `<div class="tk-hist-field-label">Loop</div><div class="tk-hist-field-val">${escapeHtml(d.ruminationText.length>140?d.ruminationText.slice(0,140)+'…':d.ruminationText)}</div>` : ''}
-    ${d.action ? `<div class="tk-hist-field-label">Action</div><div class="tk-hist-field-val">${escapeHtml(d.action)}</div>` : ''}
+    <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, 'rumination')}</div>
+    ${fields}
   </div>`;
 }
 
 function tkHistPastHtml(r) {
-  const d = r.data;
-  if (tkHistEditId === r.id) {
-    return `<div class="tk-hist-edit-form">
-      <div class="tk-hist-field-label">Situation</div>
-      <textarea class="wt-textarea" data-tkf="situation" rows="3">${escapeHtml(tkHistEditDraft.situation||'')}</textarea>
-      <div class="tk-hist-field-label">More accurate reading (CBT)</div>
-      <textarea class="wt-textarea" data-tkf="cbt" rows="2">${escapeHtml(tkHistEditDraft.cbt||'')}</textarea>
-      <div class="tk-hist-field-label">What you want to do (ACT)</div>
-      <textarea class="wt-textarea" data-tkf="act" rows="2">${escapeHtml(tkHistEditDraft.act||'')}</textarea>
-      ${tkHistEditDraft.action !== undefined ? `<div class="tk-hist-field-label">Small action</div>
-      <textarea class="wt-textarea" data-tkf="action" rows="2">${escapeHtml(tkHistEditDraft.action||'')}</textarea>` : ''}
-      <div class="tk-hist-edit-actions">
-        <button class="entry-action-btn primary" data-tksave="${r.id}" data-tkstore="past">save</button>
-        <button class="entry-action-btn" data-tkcancel="">cancel</button>
-      </div>
-    </div>`;
-  }
+  const fields = TK_HIST_FIELD_CONFIG.past.map(cfg => tkRenderHistField(cfg, r.data, r.id, 'past')).join('');
   return `<div class="tk-hist-rec">
-    <div class="tk-hist-rec-head">
-      <span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>
-      ${tkHistRecActions(r.id, 'past')}
-    </div>
-    ${d.situation ? `<div class="tk-hist-field-label">Situation</div><div class="tk-hist-field-val">${escapeHtml(d.situation.length>140?d.situation.slice(0,140)+'…':d.situation)}</div>` : ''}
-    ${d.cbt ? `<div class="tk-hist-field-label">Reread</div><div class="tk-hist-field-val">${escapeHtml(d.cbt.length>140?d.cbt.slice(0,140)+'…':d.cbt)}</div>` : ''}
-    ${d.action ? `<div class="tk-hist-field-label">Action</div><div class="tk-hist-field-val">${escapeHtml(d.action)}</div>` : (d.severity === 'serious' ? `<div class="tk-hist-field-val" style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">ongoing · serious</div>` : '')}
+    <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, 'past')}</div>
+    ${fields}
   </div>`;
 }
 
 function tkHistFutureHtml(r) {
-  const d = r.data;
-  if (tkHistEditId === r.id) {
-    return `<div class="tk-hist-edit-form">
-      <div class="tk-hist-field-label">Situation</div>
-      <textarea class="wt-textarea" data-tkf="situation" rows="2">${escapeHtml(tkHistEditDraft.situation||'')}</textarea>
-      <div class="tk-hist-field-label">The dread</div>
-      <textarea class="wt-textarea" data-tkf="dread" rows="2">${escapeHtml(tkHistEditDraft.dread||'')}</textarea>
-      <div class="tk-hist-field-label">Coping plan</div>
-      <textarea class="wt-textarea" data-tkf="copingPlan" rows="3">${escapeHtml(tkHistEditDraft.copingPlan||'')}</textarea>
-      <div class="tk-hist-edit-actions">
-        <button class="entry-action-btn primary" data-tksave="${r.id}" data-tkstore="future">save</button>
-        <button class="entry-action-btn" data-tkcancel="">cancel</button>
-      </div>
-    </div>`;
-  }
+  const fields = TK_HIST_FIELD_CONFIG.future.map(cfg => tkRenderHistField(cfg, r.data, r.id, 'future')).join('');
   return `<div class="tk-hist-rec">
-    <div class="tk-hist-rec-head">
-      <span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>
-      ${tkHistRecActions(r.id, 'future')}
-    </div>
-    ${d.situation ? `<div class="tk-hist-field-label">Situation</div><div class="tk-hist-field-val">${escapeHtml(d.situation.length>140?d.situation.slice(0,140)+'…':d.situation)}</div>` : ''}
-    ${d.dread ? `<div class="tk-hist-field-label">Feared outcome</div><div class="tk-hist-field-val">${escapeHtml(d.dread.length>140?d.dread.slice(0,140)+'…':d.dread)}</div>` : ''}
-    ${d.copingPlan ? `<div class="tk-hist-field-label">Coping plan</div><div class="tk-hist-field-val">${escapeHtml(d.copingPlan.length>140?d.copingPlan.slice(0,140)+'…':d.copingPlan)}</div>` : ''}
+    <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, 'future')}</div>
+    ${fields}
   </div>`;
 }
 
 function tkHistValuesHtml(r) {
-  const d = r.data;
-  const DOMAINS = ['Work', 'Health', 'Friendship', 'Family', 'Other'];
-  if (tkHistEditId === r.id) {
-    return `<div class="tk-hist-edit-form">
-      <div class="tk-hist-field-label">Domain</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-        ${DOMAINS.map(dom => `<button class="wt-chip ${tkHistEditDraft.domain===dom?'selected':''}" data-vdom="${escapeHtml(dom)}">${escapeHtml(dom)}</button>`).join('')}
-      </div>
-      <div class="tk-hist-field-label">Identity statement</div>
-      <textarea class="wt-textarea" data-tkf="personStatement" rows="4">${escapeHtml(tkHistEditDraft.personStatement||'')}</textarea>
-      <div class="tk-hist-field-label">Action</div>
-      <textarea class="wt-textarea" data-tkf="action" rows="2">${escapeHtml(tkHistEditDraft.action||'')}</textarea>
-      <div class="tk-hist-edit-actions">
-        <button class="entry-action-btn primary" data-tksave="${r.id}" data-tkstore="values">save</button>
-        <button class="entry-action-btn" data-tkcancel="">cancel</button>
-      </div>
-    </div>`;
-  }
+  const fields = TK_HIST_FIELD_CONFIG.values.map(cfg => tkRenderHistField(cfg, r.data, r.id, 'values')).join('');
   return `<div class="tk-hist-rec">
-    <div class="tk-hist-rec-head">
-      <span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>
-      ${tkHistRecActions(r.id, 'values')}
-    </div>
-    ${d.domain ? `<div class="tk-hist-field-label">Domain</div><div class="tk-hist-field-val">${escapeHtml(d.domain)}${d.closeness!=null?' · '+d.closeness+'/5 aligned':''}</div>` : ''}
-    ${d.personStatement ? `<div class="tk-hist-field-label">Identity</div><div class="tk-hist-field-val">${escapeHtml(d.personStatement.length>140?d.personStatement.slice(0,140)+'…':d.personStatement)}</div>` : ''}
-    ${d.action ? `<div class="tk-hist-field-label">Step</div><div class="tk-hist-field-val">${escapeHtml(d.action)}</div>` : ''}
+    <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, 'values')}</div>
+    ${fields}
   </div>`;
 }
 
@@ -4100,69 +4134,54 @@ function renderTkHistory(container) {
     });
   });
 
-  // Edit button for thought/situation/values records
-  container.querySelectorAll('[data-tkedit]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      tkHistEditId    = btn.dataset.tkedit;
-      const store     = btn.dataset.tkstore;
-      const arr       = store === 'belief' || store === 'rumination' ? loadTkThought()
-                      : store === 'past' || store === 'future'       ? loadTkSituation()
-                      : loadTkValues();
-      const rec = arr.find(r => r.id === tkHistEditId);
-      tkHistEditDraft = rec ? { ...rec.data } : {};
-      renderTkHistory(container);
-    });
-  });
-
   // Delete button
   container.querySelectorAll('[data-tkdel]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const id    = btn.dataset.tkdel;
-      const store = btn.dataset.tkstore;
+      const id = btn.dataset.tkdel, store = btn.dataset.tkstore;
       if (!confirm('Delete this record?')) return;
       if (store === 'belief' || store === 'rumination') saveTkThought(loadTkThought().filter(r => r.id !== id));
       else if (store === 'past' || store === 'future')  saveTkSituation(loadTkSituation().filter(r => r.id !== id));
       else if (store === 'values')                      saveTkValues(loadTkValues().filter(r => r.id !== id));
-      if (tkHistEditId === id) { tkHistEditId = null; tkHistEditDraft = {}; }
       renderTkHistory(container);
     });
   });
 
-  // Save edits for thought/situation/values
-  container.querySelectorAll('[data-tksave]').forEach(btn => {
+  // Inline blur save — text inputs and textareas
+  container.querySelectorAll('.tk-hist-inline[data-tkrec]').forEach(el => {
+    el.addEventListener('blur', () => {
+      tkHistSaveField(el.dataset.tkstore, el.dataset.tkrec, el.dataset.tkfield, el.value);
+    });
+  });
+
+  // Range slider — update display on input, save on change
+  container.querySelectorAll('.tk-hist-inline-range').forEach(inp => {
+    const valEl = inp.nextElementSibling;
+    inp.addEventListener('input', () => { if (valEl) valEl.textContent = `${inp.value}/${inp.max}`; });
+    inp.addEventListener('change', () => {
+      tkHistSaveField(inp.dataset.tkstore, inp.dataset.tkrec, inp.dataset.tkfield, parseInt(inp.value));
+    });
+  });
+
+  // Chip buttons — save on click, update selected state
+  container.querySelectorAll('[data-tkval][data-tkrec]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const id    = btn.dataset.tksave;
-      const store = btn.dataset.tkstore;
-      // Collect current field values from the edit form
-      const form = btn.closest('.tk-hist-edit-form');
-      form.querySelectorAll('[data-tkf]').forEach(el => { tkHistEditDraft[el.dataset.tkf] = el.value; });
-      // Save to correct store
-      if (store === 'belief' || store === 'rumination') {
-        const arr = loadTkThought(); const r = arr.find(x => x.id === id);
-        if (r) { r.data = { ...r.data, ...tkHistEditDraft }; saveTkThought(arr); }
-      } else if (store === 'past' || store === 'future') {
-        const arr = loadTkSituation(); const r = arr.find(x => x.id === id);
-        if (r) { r.data = { ...r.data, ...tkHistEditDraft }; saveTkSituation(arr); }
-      } else if (store === 'values') {
-        const arr = loadTkValues(); const r = arr.find(x => x.id === id);
-        if (r) { r.data = { ...r.data, ...tkHistEditDraft }; saveTkValues(arr); }
+      const { tkstore: store, tkrec: id, tkfield: field, tkval: val } = btn.dataset;
+      tkHistSaveField(store, id, field, val);
+      btn.closest('.tk-hist-chip-row').querySelectorAll('[data-tkval]').forEach(b =>
+        b.classList.toggle('selected', b.dataset.tkval === val)
+      );
+      if ('tkdomchip' in btn.dataset) {
+        const ci = btn.closest('.tk-hist-field-group')?.querySelector('.tk-hist-domain-custom');
+        if (ci) ci.value = '';
       }
-      tkHistEditId = null; tkHistEditDraft = {};
-      showSaved(); renderTkHistory(container);
     });
   });
 
-  // Domain chip in values edit
-  container.querySelectorAll('[data-vdom]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      tkHistEditDraft.domain = btn.dataset.vdom;
-      btn.closest('.tk-hist-edit-form').querySelectorAll('[data-vdom]').forEach(b => b.classList.toggle('selected', b.dataset.vdom === tkHistEditDraft.domain));
+  // Custom domain input — deselect chips on type, save on blur (handled by generic blur above)
+  container.querySelectorAll('.tk-hist-domain-custom').forEach(inp => {
+    inp.addEventListener('input', () => {
+      inp.closest('.tk-hist-field-group')?.querySelectorAll('[data-tkdomchip]').forEach(b => b.classList.remove('selected'));
     });
-  });
-
-  // Cancel edit
-  container.querySelectorAll('[data-tkcancel]').forEach(btn => {
-    btn.addEventListener('click', () => { tkHistEditId = null; tkHistEditDraft = {}; renderTkHistory(container); });
   });
 
   // Exposure: theme collapse
