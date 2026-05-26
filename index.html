@@ -4275,9 +4275,7 @@ function renderTkHistory(container) {
 }
 
 // ---------- Calm History ----------
-let calmHistTab       = 'main';
-let calmHistEditKey   = null;
-let calmHistEditDraft = '';
+let calmHistTab = 'main';
 
 function renderCalmHistory(container) {
   const entries = Object.entries(calmStore.narrations).sort((a,b) => b[0].localeCompare(a[0]));
@@ -4291,30 +4289,18 @@ function renderCalmHistory(container) {
     return;
   }
 
-  const entriesHtml = entries.map(([k, txt]) => {
-    if (calmHistEditKey === k) {
-      return `<div class="day-entry editing" data-key="${k}">
-        <div class="day-head">
-          <div class="day-head-left"><div class="day-date">${fmtDate(k)}</div></div>
-          <div class="entry-actions">
-            <button class="entry-action-btn primary ch-save" data-key="${k}">save</button>
-            <button class="entry-action-btn ch-cancel" data-key="${k}">cancel</button>
-          </div>
-        </div>
-        <textarea class="edit-note" id="ch-edit-ta">${escapeHtml(calmHistEditDraft)}</textarea>
-      </div>`;
-    }
-    return `<div class="day-entry" data-key="${k}">
-      <div class="day-head">
-        <div class="day-head-left"><div class="day-date">${fmtDate(k)}</div></div>
+  const entriesHtml = entries.map(([k, txt]) =>
+    `<div class="tk-hist-rec" data-key="${escapeHtml(k)}">
+      <div class="tk-hist-rec-head">
+        <span class="tk-hist-rec-date">${fmtDate(k)}</span>
         <div class="entry-actions">
-          <button class="entry-action-btn ch-edit" data-key="${k}">edit</button>
-          <button class="entry-action-btn danger ch-del" data-key="${k}">delete</button>
+          <button class="entry-action-btn danger ch-del" data-key="${escapeHtml(k)}">delete</button>
         </div>
       </div>
-      <div class="day-note">${escapeHtml(txt)}</div>
-    </div>`;
-  }).join('');
+      <div class="tk-hist-field-label">Narration</div>
+      <textarea class="tk-hist-inline" data-calmkey="${escapeHtml(k)}" placeholder="No narration recorded.">${escapeHtml(txt)}</textarea>
+    </div>`
+  ).join('');
 
   container.innerHTML = `
     <div class="date-line" style="text-align:center">Calm</div>
@@ -4328,13 +4314,6 @@ function renderCalmHistory(container) {
     </details>
   `;
 
-  container.querySelectorAll('.ch-edit').forEach(btn => {
-    btn.addEventListener('click', () => {
-      calmHistEditKey   = btn.dataset.key;
-      calmHistEditDraft = calmStore.narrations[calmHistEditKey] || '';
-      renderCalm();
-    });
-  });
   container.querySelectorAll('.ch-del').forEach(btn => {
     btn.addEventListener('click', () => {
       const k = btn.dataset.key;
@@ -4343,18 +4322,13 @@ function renderCalmHistory(container) {
       persistCalm(); showSaved('deleted'); renderCalm();
     });
   });
-  container.querySelectorAll('.ch-save').forEach(btn => {
-    btn.addEventListener('click', () => {
-      calmStore.narrations[calmHistEditKey] = calmHistEditDraft;
-      persistCalm(); calmHistEditKey = null; calmHistEditDraft = '';
-      showSaved(); renderCalm();
+
+  container.querySelectorAll('.tk-hist-inline[data-calmkey]').forEach(ta => {
+    ta.addEventListener('blur', () => {
+      calmStore.narrations[ta.dataset.calmkey] = ta.value;
+      persistCalm();
     });
   });
-  container.querySelectorAll('.ch-cancel').forEach(btn => {
-    btn.addEventListener('click', () => { calmHistEditKey = null; calmHistEditDraft = ''; renderCalm(); });
-  });
-  const editTa = container.querySelector('#ch-edit-ta');
-  if (editTa) editTa.addEventListener('input', () => { calmHistEditDraft = editTa.value; });
 }
 
 // ---------- Home ----------
@@ -4664,8 +4638,6 @@ function showScreen(name) {
     brand.style.display = 'none';
     navTabs.style.display = 'none';
     calmHistTab = 'main';
-    calmHistEditKey = null;
-    calmHistEditDraft = '';
     renderCalm();
   } else if (name === 'workthrough') {
     document.getElementById('view-workthrough').classList.add('active');
@@ -4743,10 +4715,6 @@ document.querySelectorAll('#calm-tabs button').forEach(btn => {
     document.querySelectorAll('#calm-tabs button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     calmHistTab = btn.dataset.ctab;
-    if (calmHistTab === 'main') {
-      calmHistEditKey = null;
-      calmHistEditDraft = '';
-    }
     renderCalm();
   });
 });
