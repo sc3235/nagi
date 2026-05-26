@@ -3151,6 +3151,7 @@ function renderToolThoughtRecord(panel) {
     intStep: 1, intContext: '', intIntrusion: '', intAction: '',
   };
   wtState.draft._tc = s;
+  if (s.rumStep === undefined)      s.rumStep = 1;
   if (s.intStep === undefined)     s.intStep = 1;
   if (s.intContext === undefined)  s.intContext = '';
   if (s.intIntrusion === undefined) s.intIntrusion = '';
