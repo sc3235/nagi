@@ -1755,7 +1755,8 @@
   .tk-entry[data-tool="exposure_rewire"]  { box-shadow: inset 3px 0 0 var(--amber); }
   #wt-tool-panel[data-tool="values_compass"] { --amber: var(--sage); }
   #wt-tool-panel[data-tool="values_compass"][data-branch="injustice"]  { --amber: var(--sky); }
-  #wt-tool-panel[data-tool="thought_check"][data-branch="rumination"]  { --amber: var(--sky); }
+  #wt-tool-panel[data-tool="thought_check"][data-branch="rumination"]       { --amber: var(--sky); }
+  #wt-tool-panel[data-tool="thought_check"][data-branch="intrusion_check"]  { --amber: var(--sage); }
   #wt-tool-panel[data-tool="situation_debrief"][data-branch="past"]    { --amber: var(--slate); }
   .tk-entry-name {
     font-size: 17px; font-weight: 500; letter-spacing: -0.01em;
@@ -2694,6 +2695,8 @@ function tkSaveRecord(type, data) {
   const rec = { id: genId('tk'), ts: Date.now(), data };
   if (type === 'rumination_break') {
     const arr = loadTkThought(); arr.push({ ...rec, branch: 'rumination' }); saveTkThought(arr);
+  } else if (type === 'intrusion_check') {
+    const arr = loadTkThought(); arr.push({ ...rec, branch: 'intrusion_check' }); saveTkThought(arr);
   } else if (type === 'situation_debrief') {
     const arr = loadTkSituation(); arr.push({ ...rec, branch: data.branch }); saveTkSituation(arr);
   } else if (type === 'values_compass') {
@@ -2801,7 +2804,7 @@ function renderWTToolView(container) {
   const toolName = tool ? tool.name : toolId;
 
   const branchLabels = {
-    thought_check:     { rumination: 'Rumination break' },
+    thought_check:     { rumination: 'Rumination break', intrusion_check: 'Intrusion Check' },
     situation_debrief: { past: 'Past · process', future: 'Future · plan' },
     values_compass:    { alignment: 'Value Alignment', injustice: 'Injustice Navigation' },
   };
@@ -3125,8 +3128,13 @@ function renderToolThoughtRecord(panel) {
   const s = wtState.draft._tc || {
     branch: null,
     rumStep: 1, ruminationText: '', symptoms: [], customSymptom: '', newInfoEmerging: null, chosenAction: '',
+    intStep: 1, intContext: '', intIntrusion: '', intAction: '',
   };
   wtState.draft._tc = s;
+  if (s.intStep === undefined)     s.intStep = 1;
+  if (s.intContext === undefined)  s.intContext = '';
+  if (s.intIntrusion === undefined) s.intIntrusion = '';
+  if (s.intAction === undefined)   s.intAction = '';
   panel.dataset.branch = s.branch || '';
 
   const header = (cur, total, label) => {
@@ -3154,9 +3162,18 @@ function renderToolThoughtRecord(panel) {
           </div>
           <span class="tc-card-arrow">→</span>
         </button>
+        <button class="tc-card tc-card--sage" id="tc-int">
+          <div class="tc-card-body">
+            <div class="tc-tag">閃念</div>
+            <div class="tc-card-title">Intrusion Check</div>
+            <div class="tc-card-sub">To check a flashing negative thought.</div>
+          </div>
+          <span class="tc-card-arrow">→</span>
+        </button>
       </div>
     `;
     panel.querySelector('#tc-rum').addEventListener('click', () => { s.branch = 'rumination'; renderWorkthrough(); });
+    panel.querySelector('#tc-int').addEventListener('click', () => { s.branch = 'intrusion_check'; renderWorkthrough(); });
     return;
   }
 
@@ -3259,6 +3276,83 @@ function renderToolThoughtRecord(panel) {
       });
     });
     panel.querySelector('#rb-prev').addEventListener('click', () => { s.rumStep = 3; renderWorkthrough(); });
+    return;
+  }
+
+  if (s.branch === 'intrusion_check') {
+    const INT_TOTAL = 4;
+
+    if (s.intStep === 1) {
+      panel.innerHTML = `
+        ${header(1, INT_TOTAL, 'Context')}
+        <div class="wt-step-heading">How were you feeling before the thought appeared?</div>
+        <textarea class="wt-textarea" id="int-context" placeholder="I woke up to a beautiful morning." style="min-height:100px">${escapeHtml(s.intContext)}</textarea>
+        <button class="wt-primary-btn" id="int-next">Next →</button>
+        <button class="wt-back-btn" id="int-prev" style="margin-top:8px">← back</button>
+      `;
+      const ta = panel.querySelector('#int-context');
+      ta.addEventListener('input', () => { s.intContext = ta.value; });
+      panel.querySelector('#int-next').addEventListener('click', () => { s.intContext = ta.value; s.intStep = 2; renderWorkthrough(); });
+      panel.querySelector('#int-prev').addEventListener('click', () => { s.intContext = ta.value; s.branch = null; renderWorkthrough(); });
+      return;
+    }
+
+    if (s.intStep === 2) {
+      panel.innerHTML = `
+        ${header(2, INT_TOTAL, 'Intrusion')}
+        <div class="wt-step-heading">What thought flashed through your mind? Is anything actually happening right now that supports the fear?</div>
+        <textarea class="wt-textarea" id="int-intrusion" placeholder="I thought about someone whom I don't like but appears successful. There is no real danger." style="min-height:120px">${escapeHtml(s.intIntrusion)}</textarea>
+        <button class="wt-primary-btn" id="int-next" style="margin-top:8px">Next →</button>
+        <button class="wt-back-btn" id="int-prev" style="margin-top:8px">← back</button>
+      `;
+      const ta = panel.querySelector('#int-intrusion');
+      ta.addEventListener('input', () => { s.intIntrusion = ta.value; });
+      panel.querySelector('#int-next').addEventListener('click', () => { s.intIntrusion = ta.value; s.intStep = 3; renderWorkthrough(); });
+      panel.querySelector('#int-prev').addEventListener('click', () => { s.intIntrusion = ta.value; s.intStep = 1; renderWorkthrough(); });
+      return;
+    }
+
+    if (s.intStep === 3) {
+      panel.innerHTML = `
+        ${header(3, INT_TOTAL, 'Gentle Reminder')}
+        <div class="tk-note-card">Your brain may be trying to keep you alert because staying vigilant once helped you stay safe.<br><br>This thought is an old protective alarm, not necessarily your true belief.<br><br>You can acknowledge the warning without obeying it.<br><br>Right now, pause and look around: Are you actually unsafe, or just reminded of old danger?<br><br>It's okay to remain in this good moment.</div>
+        <button class="wt-primary-btn" id="int-next" style="margin-top:14px">Next →</button>
+        <button class="wt-back-btn" id="int-prev" style="margin-top:8px">← back</button>
+      `;
+      panel.querySelector('#int-next').addEventListener('click', () => { s.intStep = 4; renderWorkthrough(); });
+      panel.querySelector('#int-prev').addEventListener('click', () => { s.intStep = 2; renderWorkthrough(); });
+      return;
+    }
+
+    const REDIRECTS = ['Stand up and stretch', 'Get a glass of water', 'Wash your face', 'Step outside for a minute', 'Do a calming exercise (home → calm)'];
+    panel.innerHTML = `
+      ${header(4, INT_TOTAL, 'Return')}
+      <div class="wt-step-heading">Pick one thing to do right now:</div>
+      <div class="tk-redirect-options">
+        ${REDIRECTS.map(a => `<button class="tk-redirect-btn" data-action="${escapeHtml(a)}">${escapeHtml(a)}</button>`).join('')}
+      </div>
+      <button class="wt-back-btn" id="int-prev" style="margin-top:14px">← back</button>
+    `;
+    panel.querySelectorAll('.tk-redirect-btn[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        s.intAction = btn.dataset.action;
+        panel.innerHTML = `
+          <div class="wt-step-heading">Good.</div>
+          <div class="wt-tool-helper" style="margin-bottom:10px">Come back to this when you're ready.</div>
+          <div class="tk-save-row">
+            <button class="wt-primary-btn" id="int-save">Save</button>
+            <button class="tk-discard-btn" id="int-skip">Skip</button>
+          </div>
+        `;
+        panel.querySelector('#int-save').addEventListener('click', () => {
+          tkSaveRecord('intrusion_check', { context: s.intContext, intrusion: s.intIntrusion, action: s.intAction });
+          showSaved('Record saved');
+          tkBackToLanding();
+        });
+        panel.querySelector('#int-skip').addEventListener('click', tkBackToLanding);
+      });
+    });
+    panel.querySelector('#int-prev').addEventListener('click', () => { s.intStep = 3; renderWorkthrough(); });
     return;
   }
 
@@ -3705,7 +3799,7 @@ function renderToolValuesCheck(panel) {
       panel.innerHTML = `
         ${ijHeader(4, 'Agency')}
         <div class="wt-step-heading">What are things you can vs. cannot control at the moment?</div>
-        <textarea class="wt-textarea" id="ij-agency" placeholder="Cannot: whether bullies prosper, whether bullies repented. Can: who gets to be involved in my life, how I react to events." style="min-height:140px">${escapeHtml(s.injAgency)}</textarea>
+        <textarea class="wt-textarea" id="ij-agency" placeholder="Cannot: whether bullies prosper, whether bullies repented.\nCan: who gets to be involved in my life, how I react to events." style="min-height:140px">${escapeHtml(s.injAgency)}</textarea>
         <button class="wt-primary-btn" id="ij-next">Next →</button>
         <button class="wt-back-btn" id="ij-prev" style="margin-top:8px">← back</button>
       `;
@@ -3924,6 +4018,11 @@ const TK_HIST_FIELD_CONFIG = {
     { key: 'sizeChoice',      label: 'Size',              visible: true, type: 'chips',    options: [{value:'yes',label:'Small step'},{value:'no',label:'Bigger shift'}] },
     { key: 'action',          label: 'Action',            visible: true, type: 'textarea', placeholder: '' },
   ],
+  intrusion_check: [
+    { key: 'context',   label: 'Feeling before',    visible: true, type: 'textarea', placeholder: '' },
+    { key: 'intrusion', label: 'Intrusive thought', visible: true, type: 'textarea', placeholder: '' },
+    { key: 'action',    label: 'Action chosen',     visible: true, type: 'text',     placeholder: '' },
+  ],
   injustice: [
     { key: 'injSituation', label: 'Injustice event', visible: true, type: 'textarea', placeholder: '' },
     { key: 'injIdentity',  label: 'Identity',        visible: true, type: 'textarea', placeholder: '' },
@@ -3935,7 +4034,7 @@ const TK_HIST_FIELD_CONFIG = {
 
 function tkHistSaveField(store, id, field, value) {
   let arr, saveFn;
-  if (store === 'rumination') { arr = loadTkThought();    saveFn = saveTkThought;    }
+  if (store === 'rumination' || store === 'intrusion_check') { arr = loadTkThought(); saveFn = saveTkThought; }
   else if (store === 'past' || store === 'future')  { arr = loadTkSituation(); saveFn = saveTkSituation; }
   else if (store === 'values')                      { arr = loadTkValues();    saveFn = saveTkValues;    }
   else return;
@@ -4012,6 +4111,14 @@ function tkHistRumHtml(r) {
   const fields = TK_HIST_FIELD_CONFIG.rumination.map(cfg => tkRenderHistField(cfg, r.data, r.id, 'rumination')).join('');
   return `<div class="tk-hist-rec">
     <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, 'rumination')}</div>
+    ${fields}
+  </div>`;
+}
+
+function tkHistIntrusionHtml(r) {
+  const fields = TK_HIST_FIELD_CONFIG.intrusion_check.map(cfg => tkRenderHistField(cfg, r.data, r.id, 'intrusion_check')).join('');
+  return `<div class="tk-hist-rec">
+    <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, 'intrusion_check')}</div>
     ${fields}
   </div>`;
 }
@@ -4140,12 +4247,13 @@ function renderTkHistory(container) {
   const exposures = loadTkExp();
 
   const rumRecs       = thought.filter(r => r.branch === 'rumination').sort((a,b) => b.ts - a.ts);
+  const intrusionRecs = thought.filter(r => r.branch === 'intrusion_check').sort((a,b) => b.ts - a.ts);
   const pastRecs      = situation.filter(r => r.branch === 'past').sort((a,b) => b.ts - a.ts);
   const futureRecs    = situation.filter(r => r.branch === 'future').sort((a,b) => b.ts - a.ts);
   const valuesRecs    = values.filter(r => r.branch !== 'injustice').sort((a,b) => b.ts - a.ts);
   const injusticeRecs = values.filter(r => r.branch === 'injustice').sort((a,b) => b.ts - a.ts);
 
-  const isEmpty = !rumRecs.length && !pastRecs.length && !futureRecs.length && !valuesRecs.length && !injusticeRecs.length && !exposures.length;
+  const isEmpty = !rumRecs.length && !intrusionRecs.length && !pastRecs.length && !futureRecs.length && !valuesRecs.length && !injusticeRecs.length && !exposures.length;
   if (isEmpty) {
     container.innerHTML = `
       <div class="date-line" style="text-align:center">Toolkit</div>
@@ -4156,7 +4264,8 @@ function renderTkHistory(container) {
   }
 
   const sections = [
-    { key: 'rumination', label: 'Thought · Rumination',       recs: rumRecs,       fn: tkHistRumHtml      },
+    { key: 'rumination',     label: 'Thought · Rumination',       recs: rumRecs,       fn: tkHistRumHtml      },
+    { key: 'intrusion_check', label: 'Thought · Intrusion Check', recs: intrusionRecs, fn: tkHistIntrusionHtml },
     { key: 'past',       label: 'Situation · Past',           recs: pastRecs,      fn: tkHistPastHtml     },
     { key: 'future',     label: 'Situation · Future',         recs: futureRecs,    fn: tkHistFutureHtml   },
     { key: 'values',     label: 'Values · Alignment',         recs: valuesRecs,    fn: tkHistValuesHtml   },
@@ -4197,7 +4306,7 @@ function renderTkHistory(container) {
     btn.addEventListener('click', () => {
       const id = btn.dataset.tkdel, store = btn.dataset.tkstore;
       if (!confirm('Delete this record?')) return;
-      if (store === 'rumination') saveTkThought(loadTkThought().filter(r => r.id !== id));
+      if (store === 'rumination' || store === 'intrusion_check') saveTkThought(loadTkThought().filter(r => r.id !== id));
       else if (store === 'past' || store === 'future')  saveTkSituation(loadTkSituation().filter(r => r.id !== id));
       else if (store === 'values')                      saveTkValues(loadTkValues().filter(r => r.id !== id));
       renderTkHistory(container);
