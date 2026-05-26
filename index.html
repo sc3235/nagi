@@ -1120,7 +1120,7 @@
     font-size: 16.5px; font-weight: 400; letter-spacing: -0.01em;
     color: var(--ink); line-height: 1.3;
   }
-  .tc-card-sub   { font-size: 12.5px; color: var(--ink-dim); line-height: 1.45; margin-top: 4px; }
+  .tc-card-sub   { font-size: 12.5px; color: var(--ink-dim); line-height: 1.45; margin-top: 4px; white-space: pre-line; }
   .tc-card-meta  { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
   .tc-card-arrow { flex-shrink: 0; font-family: var(--mono); font-size: 15px; }
 
@@ -2715,33 +2715,33 @@ const TK_CATALOGUE = [
   {
     id: 'thought_check',
     name: 'Thought Check',
-    tag: '長考',
+    tag: '思索',
     variant: 'sky',
-    cue: 'I\'m spiraling on a negative thought; I need to interrupt the loop.',
-    example: 'I\'m feel that I\'m not good enough and my career is going nowhere — and I can\'t stop ruminating on it.',
+    cue: 'I\'m stuck in a negative thought spiral.\nI\'m intruded by a flash of negative thought.',
+    example: 'I\'m ruminating that I\'m not good enough.\nI\'m reminded out of the blue that I\'m should stress about something.',
   },
   {
     id: 'situation_debrief',
     name: 'Situation Debrief',
     tag: '事態',
     variant: 'slate',
-    cue: 'Something just happened; I want to process it and figure out what to do.\nSomething is coming up; I want to think it through and have a plan.',
-    example: 'I just got critical feedback from my manager.\nI have a review coming up and I can\'t help but to worry.',
+    cue: 'I\'m triggered by something that happened.\nI\'m worried about something coming up.',
+    example: 'I\'m shaken from getting critical feedback from my manager.\nI\'m worried about an upcoming a review.',
   },
   {
     id: 'values_compass',
     name: 'Values Compass',
     tag: '価値',
     variant: 'sage',
-    cue: 'There is a wedge between my values and the world.',
-    example: 'I am swallowed by thoughts about injustice in this world.\nI care deeply about people, but my role keeps pulling me toward politics.',
+    cue: 'There is a wedge between my values and the world.\nI\'m struck by an injustice event.',
+    example: 'Being genuine matters a lot to me, and I find that I can\'t deal with politics.\nI\'m being treated unfairly.',
   },
   {
     id: 'exposure_rewire',
     name: 'Exposure Rewire',
     tag: '構築',
     variant: 'amber',
-    cue: 'I\'ve been avoiding something because I feel scared by it; but I want to face it anyway, in my own time.',
+    cue: 'I\'ve been avoiding something scary; but I want to learn to face it slowly.',
     example: 'I\'ve been avoiding driving ever since a lesson where everything went wrong at once, and now even thinking about getting behind the wheel brings it all back.',
   },
 ];
