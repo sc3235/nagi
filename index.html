@@ -1749,15 +1749,12 @@
     display: block;
   }
   .tk-entry:active { background: var(--bg-card); transform: scale(0.99); }
-  .tk-entry[data-tool="thought_check"]    { box-shadow: inset 3px 0 0 var(--sky); }
-  .tk-entry[data-tool="situation_debrief"] { box-shadow: inset 3px 0 0 var(--slate); }
-  .tk-entry[data-tool="values_compass"]   { box-shadow: inset 3px 0 0 var(--sage); }
-  .tk-entry[data-tool="exposure_rewire"]  { box-shadow: inset 3px 0 0 var(--amber); }
-  #wt-tool-panel[data-tool="values_compass"] { --amber: var(--sage); }
-  #wt-tool-panel[data-tool="values_compass"][data-branch="injustice"]  { --amber: var(--sky); }
-  #wt-tool-panel[data-tool="thought_check"][data-branch="rumination"]       { --amber: var(--sky); }
-  #wt-tool-panel[data-tool="thought_check"][data-branch="intrusion_check"]  { --amber: var(--sage); }
-  #wt-tool-panel[data-tool="situation_debrief"][data-branch="past"]    { --amber: var(--slate); }
+  #wt-tool-panel[data-tool="rumination_break"]      { --amber: var(--sky); }
+  #wt-tool-panel[data-tool="intrusion_check"]       { --amber: var(--sky); }
+  #wt-tool-panel[data-tool="situation_processing"]  { --amber: var(--slate); }
+  #wt-tool-panel[data-tool="anticipation_plan"]     { --amber: var(--slate); }
+  #wt-tool-panel[data-tool="values_alignment"]      { --amber: var(--sage); }
+  #wt-tool-panel[data-tool="injustice_navigation"]  { --amber: var(--sage); }
   .tk-entry-name {
     font-size: 17px; font-weight: 500; letter-spacing: -0.01em;
     margin-bottom: 4px; font-variation-settings: "opsz" 144;
@@ -2713,36 +2710,60 @@ function tkBackToLanding() {
 
 const TK_CATALOGUE = [
   {
-    id: 'thought_check',
-    name: 'Thought Check',
-    tag: '思索',
+    id: 'intrusion_check',
+    name: 'Intrusion Check',
+    tag: '閃念',
     variant: 'sky',
-    cue: 'I\'m stuck in a negative thought spiral.\nI\'m intruded by a flash of negative thought.',
-    example: 'I\'m ruminating that I\'m not good enough.\nI\'m reminded out of the blue that I\'m should stress about something.',
+    cue: 'I\'m intruded by a flash of negative thought, I want to step out of it.',
+    example: 'I\'m reminded out of the blue that I should stress about something.',
   },
   {
-    id: 'situation_debrief',
-    name: 'Situation Debrief',
+    id: 'rumination_break',
+    name: 'Rumination Break',
+    tag: '反芻',
+    variant: 'sky',
+    cue: 'I\'m stuck in a negative thought spiral, I want to interrupt the loop.',
+    example: 'I keep replaying that I\'m not good enough.',
+  },
+  {
+    id: 'situation_processing',
+    name: 'Situation Processing',
     tag: '事態',
     variant: 'slate',
-    cue: 'I\'m triggered by something that happened.\nI\'m worried about something coming up.',
-    example: 'I\'m shaken from getting critical feedback from my manager.\nI\'m worried about an upcoming a review.',
+    cue: 'I\'m triggered by something that happened, I want to process it.',
+    example: 'I\'m shaken from getting critical feedback from my manager.',
   },
   {
-    id: 'values_compass',
-    name: 'Values Compass',
+    id: 'anticipation_plan',
+    name: 'Anticipation Planning',
+    tag: '心配',
+    variant: 'slate',
+    cue: 'I\'m worrying about something coming up, I want to have a plan.',
+    example: 'I\'m worried about an upcoming review.',
+  },
+  {
+    id: 'values_alignment',
+    name: 'Values Alignment',
     tag: '価値',
     variant: 'sage',
-    cue: 'There is a wedge between my values and the world.\nI\'m struck by an injustice event.',
-    example: 'Being genuine matters a lot to me, and I find that I can\'t deal with politics.\nI\'m being treated unfairly.',
+    cue: 'I feel a wedge between my values and my surroundings, I want to realign.',
+    example: 'Being genuine matters a lot to me, and I find that I can\'t deal with politics.',
+  },
+  {
+    id: 'injustice_navigation',
+    name: 'Injustice Navigation',
+    tag: '公正',
+    variant: 'sage',
+    cue: 'I\'m struck by an injustice event, I want to navigate it.',
+    example: 'I\'m being treated unfairly.',
   },
   {
     id: 'exposure_rewire',
     name: 'Exposure Rewire',
     tag: '構築',
     variant: 'amber',
-    cue: 'I\'ve been avoiding something scary; but I want to learn to face it slowly.',
-    example: 'I\'ve been avoiding driving ever since a lesson where everything went wrong at once, and now even thinking about getting behind the wheel brings it all back.',
+    cue: 'I\'ve been avoiding something scary, I want to learn to face it slowly.',
+    example: 'I\'ve been dreading driving ever since an overly intense lesson.',
   },
 ];
 
@@ -2770,7 +2791,7 @@ function renderWorkthrough() {
 }
 
 function renderWTLanding(container) {
-  const delays = ['0.00s', '0.06s', '0.12s', '0.18s'];
+  const delays = ['0.00s', '0.06s', '0.12s', '0.18s', '0.24s', '0.30s', '0.36s'];
   const entriesHtml = TK_CATALOGUE.map((t, i) => `
     <button class="tc-card tc-card--${t.variant}" data-tool="${t.id}" style="animation-delay:${delays[i]}">
       <div class="tc-card-body">
@@ -2790,9 +2811,16 @@ function renderWTLanding(container) {
 
   container.querySelectorAll('.tc-card').forEach(entry => {
     entry.addEventListener('click', () => {
+      const toolId = entry.dataset.tool;
       wtState.step = 5;
-      wtState.activeActionTool = entry.dataset.tool;
+      wtState.activeActionTool = toolId;
       wtState.draft = {};
+      if (toolId === 'rumination_break')     wtState.draft._tc  = { branch: 'rumination' };
+      if (toolId === 'intrusion_check')      wtState.draft._tc  = { branch: 'intrusion_check' };
+      if (toolId === 'situation_processing') wtState.draft._twt = { branch: 'past', step: 1 };
+      if (toolId === 'anticipation_plan')    wtState.draft._twt = { branch: 'future', step: 1 };
+      if (toolId === 'values_alignment')     wtState.draft._vc  = { branch: 'alignment', step: 1 };
+      if (toolId === 'injustice_navigation') wtState.draft._vc  = { branch: 'injustice', step: 1 };
       renderWorkthrough();
     });
   });
@@ -2801,19 +2829,7 @@ function renderWTLanding(container) {
 function renderWTToolView(container) {
   const toolId = wtState.activeActionTool;
   const tool = TK_CATALOGUE.find(t => t.id === toolId);
-  const toolName = tool ? tool.name : toolId;
-
-  const branchLabels = {
-    thought_check:     { rumination: 'Rumination Break', intrusion_check: 'Intrusion Check' },
-    situation_debrief: { past: 'Past · Process', future: 'Future · Plan' },
-    values_compass:    { alignment: 'Value Alignment', injustice: 'Injustice Navigation' },
-  };
-  let branch = null;
-  if (toolId === 'thought_check')          branch = (wtState.draft._tc  || {}).branch;
-  else if (toolId === 'situation_debrief') branch = (wtState.draft._twt || {}).branch;
-  else if (toolId === 'values_compass')    branch = (wtState.draft._vc  || {}).branch;
-  const branchLabel = branch && branchLabels[toolId] ? branchLabels[toolId][branch] : null;
-  const title = branchLabel ? `${toolName} - ${branchLabel}` : toolName;
+  const title = tool ? tool.name : toolId;
 
   container.innerHTML = `
     <div class="wt-tool-screen-heading">${escapeHtml(title)}<em>.</em></div>
@@ -2823,10 +2839,14 @@ function renderWTToolView(container) {
 }
 
 function renderActionTool(panel, toolId) {
-  if (toolId === 'thought_check')      renderToolThoughtRecord(panel);
-  else if (toolId === 'situation_debrief') renderToolThoughtWorkthrough(panel);
-  else if (toolId === 'values_compass')   renderToolValuesCheck(panel);
-  else if (toolId === 'exposure_rewire')  renderToolExposure(panel);
+  if (toolId === 'rumination_break' || toolId === 'intrusion_check')
+    renderToolThoughtRecord(panel);
+  else if (toolId === 'situation_processing' || toolId === 'anticipation_plan')
+    renderToolThoughtWorkthrough(panel);
+  else if (toolId === 'values_alignment' || toolId === 'injustice_navigation')
+    renderToolValuesCheck(panel);
+  else if (toolId === 'exposure_rewire')
+    renderToolExposure(panel);
 }
 
 function expThemeList() {
