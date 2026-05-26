@@ -3502,7 +3502,7 @@ function renderToolThoughtWorkthrough(panel) {
           <button type="button" class="sc-chip ${s.thoughtIsAboutSelf === 'no' ? 'selected' : ''}" data-sf="no">No</button>
         </div>
         ${s.thoughtIsAboutSelf === 'yes' ? `
-          <div class="rcs-notes-label" style="margin-top:12px">What would you say to a friend who told you this about themselves?</div>
+          <div class="wt-tool-helper" style="margin-top:12px">What would you say to a friend who told you this about themselves?</div>
           <textarea class="rcs-notes-textarea" id="twt-friend" placeholder="He made a call that didn't land. That happens to everyone who's actually trying." style="min-height:90px">${escapeHtml(s.selfAsFriend)}</textarea>
         ` : ''}
         <div class="wt-tool-helper" style="margin-top:14px">Is your immediate reaction trying to protect you from something?</div>
