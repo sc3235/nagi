@@ -3123,7 +3123,7 @@ function openReframeCheatsheet(onPick) {
 function renderToolThoughtRecord(panel) {
   const s = wtState.draft._tc || {
     branch: null,
-    rumStep: 1, ruminationText: '', bodyText: '', chosenAction: '',
+    rumStep: 1, ruminationText: '', symptoms: [], customSymptom: '', newInfoEmerging: null, chosenAction: '',
     belStep: 1, facts: '', thoughts: '', emotion: '', intensity: 5,
     evidenceFor: '', evidenceAgainst: '', reinterpret: '', newEmotion: '', newIntensity: 5,
   };
@@ -3190,18 +3190,46 @@ function renderToolThoughtRecord(panel) {
       return;
     }
     if (s.rumStep === 2) {
+      const SYM_OPTIONS = [
+        'repeating same thought loops',
+        'searching endlessly for moral closure',
+        'mentally rehearsing old arguments',
+        'trying to "solve" unfairness globally',
+        'stalking people online',
+      ];
       panel.innerHTML = `
-        ${header(2, RUM_TOTAL, 'Body scan')}
-        <div class="wt-step-heading">Where do you feel this in your body?</div>
-        <div class="wt-tool-helper">Take your time here — there's no rush to the next step.</div>
-        <textarea class="wt-textarea" id="rb-body" placeholder="chest tight, stomach knotted, ..." style="min-height:90px">${escapeHtml(s.bodyText)}</textarea>
-        <button class="wt-primary-btn" id="rb-next">Next →</button>
+        ${header(2, RUM_TOTAL, 'Symptoms')}
+        <div class="wt-step-heading">What are your symptoms?</div>
+        <div class="wt-chips-row" id="rb-sym-chips">
+          ${SYM_OPTIONS.map(o => `<button class="wt-chip${s.symptoms.includes(o) ? ' selected' : ''}" data-sym="${escapeHtml(o)}">${escapeHtml(o)}</button>`).join('')}
+        </div>
+        <textarea class="wt-textarea" id="rb-custom-sym" placeholder="Other…" style="min-height:60px;margin-top:4px">${escapeHtml(s.customSymptom)}</textarea>
+        <div class="wt-step-heading" style="margin-top:18px">Is there new information emerging?</div>
+        <div class="wt-chips-row" id="rb-newinfo-chips">
+          <button class="wt-chip${s.newInfoEmerging === 'yes' ? ' selected' : ''}" data-newinfo="yes">Yes</button>
+          <button class="wt-chip${s.newInfoEmerging === 'no' ? ' selected' : ''}" data-newinfo="no">No</button>
+        </div>
+        <button class="wt-primary-btn" id="rb-next" style="margin-top:8px">Next →</button>
         <button class="wt-back-btn" id="rb-prev" style="margin-top:8px">← back</button>
       `;
-      const ta = panel.querySelector('#rb-body');
-      ta.addEventListener('input', () => { s.bodyText = ta.value; });
-      panel.querySelector('#rb-next').addEventListener('click', () => { s.bodyText = ta.value; s.rumStep = 3; renderWorkthrough(); });
-      panel.querySelector('#rb-prev').addEventListener('click', () => { s.bodyText = ta.value; s.rumStep = 1; renderWorkthrough(); });
+      panel.querySelectorAll('#rb-sym-chips .wt-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const sym = btn.dataset.sym;
+          if (s.symptoms.includes(sym)) s.symptoms = s.symptoms.filter(x => x !== sym);
+          else s.symptoms = [...s.symptoms, sym];
+          btn.classList.toggle('selected', s.symptoms.includes(sym));
+        });
+      });
+      const customTa = panel.querySelector('#rb-custom-sym');
+      customTa.addEventListener('input', () => { s.customSymptom = customTa.value; });
+      panel.querySelectorAll('#rb-newinfo-chips .wt-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          s.newInfoEmerging = btn.dataset.newinfo;
+          panel.querySelectorAll('#rb-newinfo-chips .wt-chip').forEach(b => b.classList.toggle('selected', b === btn));
+        });
+      });
+      panel.querySelector('#rb-next').addEventListener('click', () => { s.customSymptom = customTa.value; s.rumStep = 3; renderWorkthrough(); });
+      panel.querySelector('#rb-prev').addEventListener('click', () => { s.customSymptom = customTa.value; s.rumStep = 1; renderWorkthrough(); });
       return;
     }
     if (s.rumStep === 3) {
@@ -3236,7 +3264,7 @@ function renderToolThoughtRecord(panel) {
           </div>
         `;
         panel.querySelector('#rb-save').addEventListener('click', () => {
-          tkSaveRecord('rumination_break', { action: s.chosenAction, ruminationText: s.ruminationText, bodyText: s.bodyText });
+          tkSaveRecord('rumination_break', { action: s.chosenAction, ruminationText: s.ruminationText, symptoms: s.symptoms, customSymptom: s.customSymptom, newInfoEmerging: s.newInfoEmerging });
           showSaved('Record saved');
           tkBackToLanding();
         });
@@ -3541,7 +3569,7 @@ function renderToolThoughtWorkthrough(panel) {
         </div>
         ${s.thoughtIsAboutSelf === 'yes' ? `
           <div class="wt-tool-helper" style="margin-top:12px">What would you say to a friend who told you this about themselves?</div>
-          <textarea class="rcs-notes-textarea" id="twt-friend" placeholder="He made a call that didn't land. That happens to everyone who's actually trying." style="min-height:90px">${escapeHtml(s.selfAsFriend)}</textarea>
+          <textarea class="rcs-notes-textarea" id="twt-friend" placeholder="She is being really hard on herself." style="min-height:90px">${escapeHtml(s.selfAsFriend)}</textarea>
         ` : ''}
         <div class="wt-tool-helper" style="margin-top:14px">Is your immediate reaction trying to protect you from something?</div>
         <textarea class="wt-textarea" id="twt-protect" placeholder="${escapeHtml(protectMild + '\n' + protectSerious)}" style="min-height:120px">${escapeHtml(s.protectionFrom)}</textarea>
@@ -3569,8 +3597,7 @@ function renderToolThoughtWorkthrough(panel) {
       panel.innerHTML = `
         ${header(pst.label)}
         <div class="wt-step-heading">${escapeHtml(pst.prompt)}</div>
-        ${isImmediate ? `<div class="wt-tool-helper">However you're reacting right now — that reaction makes sense given what happened.</div>` : ''}
-        ${isCbt ? `<div class="wt-tool-helper">No is okay too.</div>` : ''}
+${isCbt ? `<div class="wt-tool-helper">No is okay too.</div>` : ''}
         <textarea class="wt-textarea" id="twt-field" placeholder="${escapeHtml(placeholder)}" style="min-height:160px">${escapeHtml(s[pst.field])}</textarea>
         ${isCbt ? `
           <button type="button" class="rcs-trigger" id="twt-cheat">Not sure where to start? Browse thinking patterns →</button>
@@ -3869,9 +3896,11 @@ const TK_HIST_FIELD_CONFIG = {
     { key: 'selfAsFriend',     label: 'Self as friend',           visible: true, type: 'textarea', placeholder: '' },
   ],
   rumination: [
-    { key: 'ruminationText', label: 'What was looping', visible: true, type: 'textarea', placeholder: 'Describe what was looping in your mind…' },
-    { key: 'bodyText',       label: 'Body sensation',   visible: true, type: 'textarea', placeholder: 'chest tight, stomach knotted, …' },
-    { key: 'action',         label: 'Action chosen',    visible: true, type: 'text',     placeholder: '' },
+    { key: 'ruminationText',  label: 'What was looping',          visible: true, type: 'textarea', placeholder: 'Describe what was looping in your mind…' },
+    { key: 'symptoms',        label: 'Symptoms',                  visible: true, type: 'tags' },
+    { key: 'customSymptom',   label: 'Other symptoms',            visible: true, type: 'textarea', placeholder: '' },
+    { key: 'newInfoEmerging', label: 'New information emerging?', visible: true, type: 'chips',    options: [{value:'yes',label:'Yes'},{value:'no',label:'No'}] },
+    { key: 'action',          label: 'Action chosen',             visible: true, type: 'text',     placeholder: '' },
   ],
   past: [
     { key: 'severity',          label: 'Severity',                     visible: true, type: 'chips',    options: [{value:'onetime',label:'One-time'},{value:'serious',label:'Serious / ongoing'}] },
@@ -3946,6 +3975,11 @@ function tkRenderHistField(cfg, d, id, store) {
       <input type="range" class="wt-slider tk-hist-inline-range" ${attrs} min="${cfg.min}" max="${cfg.max}" value="${v}">
       <span class="tk-hist-range-val">${v}/${cfg.max}</span>
     </div>`;
+  }
+  if (cfg.type === 'tags') {
+    const tags = Array.isArray(val) ? val : [];
+    if (!tags.length) return `${label}<div style="color:var(--text-muted);font-size:12px;margin-bottom:10px">—</div>`;
+    return `${label}<div class="tk-hist-chip-row">${tags.map(t => `<span class="wt-chip selected" style="pointer-events:none">${escapeHtml(t)}</span>`).join('')}</div>`;
   }
   if (cfg.type === 'chips') {
     const chips = cfg.options.map(o =>
