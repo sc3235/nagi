@@ -1754,8 +1754,7 @@
   .tk-entry[data-tool="values_compass"]   { box-shadow: inset 3px 0 0 var(--sage); }
   .tk-entry[data-tool="exposure_rewire"]  { box-shadow: inset 3px 0 0 var(--amber); }
   #wt-tool-panel[data-tool="values_compass"] { --amber: var(--sage); }
-  #wt-tool-panel[data-tool="thought_check"][data-branch="belief"]     { --amber: var(--sky); }
-  #wt-tool-panel[data-tool="thought_check"][data-branch="rumination"]  { --amber: var(--sage); }
+  #wt-tool-panel[data-tool="thought_check"][data-branch="rumination"]  { --amber: var(--sky); }
   #wt-tool-panel[data-tool="situation_debrief"][data-branch="past"]    { --amber: var(--slate); }
   .tk-entry-name {
     font-size: 17px; font-weight: 500; letter-spacing: -0.01em;
@@ -2234,6 +2233,7 @@ function persistSleep() {
 }
 function loadTkThought()       { try { return JSON.parse(localStorage.getItem(TK_THOUGHT_KEY)   || '[]'); } catch(e){ return []; } }
 function saveTkThought(arr)    { try { localStorage.setItem(TK_THOUGHT_KEY,   JSON.stringify(arr)); } catch(e){} }
+(function(){ const clean = loadTkThought().filter(r => r.branch !== 'belief'); saveTkThought(clean); })();
 function loadTkSituation()     { try { return JSON.parse(localStorage.getItem(TK_SITUATION_KEY) || '[]'); } catch(e){ return []; } }
 function saveTkSituation(arr)  { try { localStorage.setItem(TK_SITUATION_KEY, JSON.stringify(arr)); } catch(e){} }
 function loadTkValues()        { try { return JSON.parse(localStorage.getItem(TK_VALUES_KEY)    || '[]'); } catch(e){ return []; } }
@@ -2691,9 +2691,7 @@ let tkExpEditDraft  = null;
 
 function tkSaveRecord(type, data) {
   const rec = { id: genId('tk'), ts: Date.now(), data };
-  if (type === 'belief_check') {
-    const arr = loadTkThought(); arr.push({ ...rec, branch: 'belief' }); saveTkThought(arr);
-  } else if (type === 'rumination_break') {
+  if (type === 'rumination_break') {
     const arr = loadTkThought(); arr.push({ ...rec, branch: 'rumination' }); saveTkThought(arr);
   } else if (type === 'situation_debrief') {
     const arr = loadTkSituation(); arr.push({ ...rec, branch: data.branch }); saveTkSituation(arr);
@@ -2715,8 +2713,8 @@ const TK_CATALOGUE = [
     name: 'Thought Check',
     tag: '長考',
     variant: 'sky',
-    cue: 'I\'m spiraling on a negative thought; I need to either interrupt the loop or examine whether it\'s actually true.',
-    example: 'I didn\'t get the role I interviewed for. I\'m feel that I\'m not good enough and my career is going nowhere — and I can\'t stop ruminating on it.',
+    cue: 'I\'m spiraling on a negative thought; I need to interrupt the loop.',
+    example: 'I\'m feel that I\'m not good enough and my career is going nowhere — and I can\'t stop ruminating on it.',
   },
   {
     id: 'situation_debrief',
@@ -2802,7 +2800,7 @@ function renderWTToolView(container) {
   const toolName = tool ? tool.name : toolId;
 
   const branchLabels = {
-    thought_check:     { belief: 'Belief check', rumination: 'Rumination break' },
+    thought_check:     { rumination: 'Rumination break' },
     situation_debrief: { past: 'Past · process', future: 'Future · plan' },
   };
   let branch = null;
@@ -3124,13 +3122,8 @@ function renderToolThoughtRecord(panel) {
   const s = wtState.draft._tc || {
     branch: null,
     rumStep: 1, ruminationText: '', symptoms: [], customSymptom: '', newInfoEmerging: null, chosenAction: '',
-    belStep: 1, facts: '', thoughts: '', emotion: '', intensity: 5,
-    evidenceFor: '', evidenceAgainst: '', reinterpret: '', newEmotion: '', newIntensity: 5,
   };
   wtState.draft._tc = s;
-  if (s.reframeNotes === undefined) s.reframeNotes = '';
-  if (s.beliefIsAboutSelf === undefined) s.beliefIsAboutSelf = null;
-  if (s.selfAsFriend === undefined) s.selfAsFriend = '';
   panel.dataset.branch = s.branch || '';
 
   const header = (cur, total, label) => {
@@ -3150,15 +3143,7 @@ function renderToolThoughtRecord(panel) {
     panel.innerHTML = `
       <div class="tc-question">What do you need <em>right now</em>?</div>
       <div class="tc-cards">
-        <button class="tc-card tc-card--sky" id="tc-bel">
-          <div class="tc-card-body">
-            <div class="tc-tag">確信</div>
-            <div class="tc-card-title">Belief check</div>
-            <div class="tc-card-sub">To slow down and examine whether a belief is true.</div>
-          </div>
-          <span class="tc-card-arrow">→</span>
-        </button>
-        <button class="tc-card tc-card--sage" id="tc-rum">
+        <button class="tc-card tc-card--sky" id="tc-rum">
           <div class="tc-card-body">
             <div class="tc-tag">反芻</div>
             <div class="tc-card-title">Rumination break</div>
@@ -3169,7 +3154,6 @@ function renderToolThoughtRecord(panel) {
       </div>
     `;
     panel.querySelector('#tc-rum').addEventListener('click', () => { s.branch = 'rumination'; renderWorkthrough(); });
-    panel.querySelector('#tc-bel').addEventListener('click', () => { s.branch = 'belief'; renderWorkthrough(); });
     return;
   }
 
@@ -3275,153 +3259,6 @@ function renderToolThoughtRecord(panel) {
     return;
   }
 
-  // Belief check
-  const BEL_TOTAL = 6;
-  const cur = s.belStep;
-
-  const showBeliefDone = () => {
-    const dropped = s.newIntensity < s.intensity;
-    panel.innerHTML = `
-      <div class="wt-step-heading">All done.</div>
-      <div class="wt-tool-helper" style="margin-bottom:10px">Intensity went from <strong>${s.intensity}/10</strong> to <strong>${s.newIntensity}/10</strong>.${dropped ? ' Examining the belief helped.' : ''}</div>
-      <div class="tk-note-card">Examining your own thinking takes honesty and courage. Most people just stay in the spiral.</div>
-      <div class="tk-save-row">
-        <button class="wt-primary-btn" id="bc-save">Save</button>
-        <button class="tk-discard-btn" id="bc-discard">Skip</button>
-      </div>
-    `;
-    panel.querySelector('#bc-save').addEventListener('click', () => {
-      tkSaveRecord('belief_check', {
-        facts: s.facts, thoughts: s.thoughts,
-        emotion: s.emotion, intensity: s.intensity,
-        evidenceFor: s.evidenceFor, evidenceAgainst: s.evidenceAgainst,
-        reinterpret: s.reinterpret,
-        newEmotion: s.newEmotion, newIntensity: s.newIntensity,
-        reframeNotes: s.reframeNotes,
-        beliefIsAboutSelf: s.beliefIsAboutSelf, selfAsFriend: s.selfAsFriend,
-      });
-      showSaved('Record saved');
-      tkBackToLanding();
-    });
-    panel.querySelector('#bc-discard').addEventListener('click', tkBackToLanding);
-  };
-
-  const BEL_STEPS = {
-    1: { label: 'Facts',            prompt: 'What actually happened — just the facts?' },
-    2: { label: 'Thoughts',         prompt: 'What are you telling yourself about it?' },
-    3: { label: 'Emotions',         prompt: 'What are you feeling, and how intense is it?' },
-    4: { label: 'Evidence',         prompt: 'Weigh the belief against the evidence.' },
-    5: { label: 'Reinterpret',      prompt: 'Given all of this, is there a more accurate way to see it?' },
-    6: { label: 'Updated emotions', prompt: 'What are you feeling now, and how intense?' },
-  };
-  const st = BEL_STEPS[cur];
-
-  let inputHtml = '';
-  if (cur === 1) {
-    inputHtml = `<textarea class="wt-textarea" id="bc-field" placeholder="I didn't get the role I interviewed for." style="min-height:100px">${escapeHtml(s.facts)}</textarea>`;
-  } else if (cur === 2) {
-    inputHtml = `
-      <textarea class="wt-textarea" id="bc-field" placeholder="This means I'm not good enough and my career is going nowhere." style="min-height:100px">${escapeHtml(s.thoughts)}</textarea>
-      <div class="sc-row">
-        <span class="wt-tool-helper">Is this belief about yourself?</span>
-        <button type="button" class="sc-chip ${s.beliefIsAboutSelf === 'yes' ? 'selected' : ''}" data-sf="yes">Yes</button>
-        <button type="button" class="sc-chip ${s.beliefIsAboutSelf === 'no' ? 'selected' : ''}" data-sf="no">No</button>
-      </div>
-      ${s.beliefIsAboutSelf === 'yes' ? `
-        <div class="wt-tool-helper" style="margin-top:12px">What would you say to a friend who told you this about themselves?</div>
-        <textarea class="rcs-notes-textarea" id="bc-friend" placeholder="She's being really hard on herself. One rejection doesn't mean her career is going nowhere." style="min-height:90px">${escapeHtml(s.selfAsFriend)}</textarea>
-      ` : ''}`;
-  } else if (cur === 3) {
-    inputHtml = `
-      <input class="wt-input" id="bc-emotion" type="text" placeholder="shame, hopelessness, ..." value="${escapeHtml(s.emotion)}" style="margin-bottom:10px" />
-      <div class="tk-intensity-row">
-        <input type="range" class="wt-slider" id="bc-intensity" min="1" max="10" value="${s.intensity}" />
-        <div class="tk-intensity-val" id="bc-intensity-val">${s.intensity}/10</div>
-      </div>`;
-  } else if (cur === 4) {
-    inputHtml = `
-      <div class="wt-tool-helper">What supports this belief?</div>
-      <textarea class="wt-textarea" id="bc-ev-for" placeholder="I did get rejected. This is the second rejection this year." style="min-height:90px;margin-bottom:14px">${escapeHtml(s.evidenceFor)}</textarea>
-      <div class="wt-tool-helper">What contradicts it?</div>
-      <textarea class="wt-textarea" id="bc-ev-against" placeholder="I've succeeded in roles before. One rejection reflects this fit and moment, not my overall ability." style="min-height:90px">${escapeHtml(s.evidenceAgainst)}</textarea>`;
-  } else if (cur === 5) {
-    inputHtml = `<textarea class="wt-textarea" id="bc-field" placeholder="I didn't get this specific role. That's disappointing, but it doesn't define my trajectory." style="min-height:100px">${escapeHtml(s.reinterpret)}</textarea>
-      <button type="button" class="rcs-trigger" id="bc-cheat">Not sure where to start? Browse thinking patterns →</button>
-      <div class="rcs-notes-label">Reframe prompts</div>
-      <textarea class="rcs-notes-textarea" id="bc-reframe" placeholder="Tap patterns in the drawer to collect prompts here, or write your own.">${escapeHtml(s.reframeNotes)}</textarea>`;
-  } else if (cur === 6) {
-    inputHtml = `
-      <div class="wt-tool-helper">Before: <strong>${escapeHtml(s.emotion || '—')}</strong> · <strong>${s.intensity}/10</strong></div>
-      <input class="wt-input" id="bc-emotion" type="text" placeholder="Still disappointed, but lighter." value="${escapeHtml(s.newEmotion)}" style="margin:10px 0" />
-      <div class="tk-intensity-row">
-        <input type="range" class="wt-slider" id="bc-intensity" min="1" max="10" value="${s.newIntensity}" />
-        <div class="tk-intensity-val" id="bc-intensity-val">${s.newIntensity}/10</div>
-      </div>`;
-  }
-
-  panel.innerHTML = `
-    ${header(cur, BEL_TOTAL, st.label)}
-    <div class="wt-step-heading">${escapeHtml(st.prompt)}</div>
-    ${inputHtml}
-    <button class="wt-primary-btn" id="bc-next" style="margin-top:4px">${cur === BEL_TOTAL ? 'Finish' : 'Next →'}</button>
-    <button class="wt-back-btn" id="bc-prev" style="margin-top:8px">← back</button>
-  `;
-
-  const persist = () => {
-    const field = panel.querySelector('#bc-field');
-    if (field) {
-      if (cur === 1) s.facts = field.value;
-      else if (cur === 2) s.thoughts = field.value;
-      else if (cur === 5) s.reinterpret = field.value;
-    }
-    const emo = panel.querySelector('#bc-emotion');
-    if (emo) { if (cur === 3) s.emotion = emo.value; else if (cur === 6) s.newEmotion = emo.value; }
-    const evFor = panel.querySelector('#bc-ev-for');
-    if (evFor) s.evidenceFor = evFor.value;
-    const evAg = panel.querySelector('#bc-ev-against');
-    if (evAg) s.evidenceAgainst = evAg.value;
-    const re = panel.querySelector('#bc-reframe');
-    if (re) s.reframeNotes = re.value;
-    const fr = panel.querySelector('#bc-friend');
-    if (fr) s.selfAsFriend = fr.value;
-  };
-
-  if (cur === 2) {
-    panel.querySelectorAll('[data-sf]').forEach(btn => {
-      btn.addEventListener('click', () => { persist(); s.beliefIsAboutSelf = btn.dataset.sf; renderWorkthrough(); });
-    });
-  }
-  if (cur === 5) {
-    const reTa = panel.querySelector('#bc-reframe');
-    reTa.addEventListener('input', () => { s.reframeNotes = reTa.value; });
-    panel.querySelector('#bc-cheat').addEventListener('click', () => {
-      persist();
-      openReframeCheatsheet((t) => {
-        const curVal = reTa.value;
-        reTa.value = curVal ? (curVal.trim() + '\n' + t) : t;
-        s.reframeNotes = reTa.value;
-      });
-    });
-  }
-  const slider = panel.querySelector('#bc-intensity');
-  if (slider) {
-    slider.addEventListener('input', () => {
-      const v = parseInt(slider.value);
-      if (cur === 3) s.intensity = v; else if (cur === 6) s.newIntensity = v;
-      panel.querySelector('#bc-intensity-val').textContent = v + '/10';
-    });
-  }
-  panel.querySelector('#bc-next').addEventListener('click', () => {
-    persist();
-    if (cur === BEL_TOTAL) showBeliefDone();
-    else { s.belStep = cur + 1; renderWorkthrough(); }
-  });
-  panel.querySelector('#bc-prev').addEventListener('click', () => {
-    persist();
-    if (cur === 1) s.branch = null;
-    else s.belStep = cur - 1;
-    renderWorkthrough();
-  });
 }
 
 function renderToolThoughtWorkthrough(panel) {
@@ -3477,7 +3314,7 @@ function renderToolThoughtWorkthrough(panel) {
     return;
   }
 
-  const total = (s.branch === 'past') ? 7 : 6;
+  const total = (s.branch === 'past') ? 8 : 6;
   const dotsHtml = Array.from({ length: total }, (_, i) => {
     const n = i + 1;
     return `<span class="wt-dot ${n === s.step ? 'active' : n < s.step ? 'done' : ''}"></span>`;
@@ -3504,16 +3341,16 @@ function renderToolThoughtWorkthrough(panel) {
 
   if (s.branch === 'past') {
     const PAST_STEPS = {
-      1: { label: 'Situation',          field: 'situation',         prompt: 'What\'s happening?',
+      1: { label: 'Situation',          field: 'situation',         prompt: 'What\'s happening? What triggered you?',
            mild:    'Manager gave me critical feedback — specific things they said they want me to do differently. //',
            serious: 'My manager has been consistently undermining me in meetings and taking credit for my work. It\'s been going on for months.' },
       2: { label: 'Immediate reaction', field: 'immediateReaction', prompt: 'How do you feel? What\'s your immediate reaction?',
            mild:    'Defensive. Want to explain myself and justify every decision I made. //',
            serious: 'Want to go quiet, stop contributing, make myself invisible.' },
-      4: { label: 'CBT check',          field: 'cbt',               prompt: 'Is there a more accurate way to read this?',
+      4: { label: 'CBT check',          field: 'cbt',               prompt: 'What are evidence for and against this belief? Is there a more accurate way to read this?',
            mild:    'Critical feedback is normal and often a sign they\'re invested in you. One conversation isn\'t a verdict on your performance. //',
            serious: 'I may have less power than my manager, but I\'m not powerless. There are people and options I haven\'t fully explored yet.' },
-      5: { label: 'ACT check',          field: 'act',               prompt: 'Even if this is true, what do you want to do? Would you like to respond differently than your immediate reaction?',
+      6: { label: 'ACT check',          field: 'act',               prompt: 'Even if this is true, what do you want to do? Would you like to respond differently than your immediate reaction?',
            mild:    'Even if I have been underperforming, that\'s actionable. I want to listen properly rather than defend. //',
            serious: 'Even if the power imbalance is real, I want to protect myself and not let this define my career. Going invisible makes it worse.' },
     };
@@ -3554,10 +3391,8 @@ function renderToolThoughtWorkthrough(panel) {
     };
 
     if (s.step === 3) {
-      const beliefMild = 'I\'m failing at my job.';
+      const beliefMild = 'I\'m failing at my job. //';
       const beliefSerious = 'I\'m powerless and nothing I do will change this.';
-      const protectMild = 'The defensiveness is protecting me from having to admit they might be right.';
-      const protectSerious = 'Going quiet is protecting me from more humiliation.';
       panel.innerHTML = `
         ${header('The thought')}
         <div class="wt-step-heading">What belief made you feel this way?</div>
@@ -3571,14 +3406,11 @@ function renderToolThoughtWorkthrough(panel) {
           <div class="wt-tool-helper" style="margin-top:12px">What would you say to a friend who told you this about themselves?</div>
           <textarea class="rcs-notes-textarea" id="twt-friend" placeholder="She is being really hard on herself." style="min-height:90px">${escapeHtml(s.selfAsFriend)}</textarea>
         ` : ''}
-        <div class="wt-tool-helper" style="margin-top:14px">Is your immediate reaction trying to protect you from something?</div>
-        <textarea class="wt-textarea" id="twt-protect" placeholder="${escapeHtml(protectMild + '\n' + protectSerious)}" style="min-height:120px">${escapeHtml(s.protectionFrom)}</textarea>
         <button class="wt-primary-btn" id="twt-next" style="margin-top:4px">Next →</button>
         <button class="wt-back-btn" id="twt-prev" style="margin-top:8px">← back</button>
       `;
       const save3 = () => {
         const t = panel.querySelector('#twt-thought'); if (t) s.thought = t.value;
-        const p = panel.querySelector('#twt-protect'); if (p) s.protectionFrom = p.value;
         const fr = panel.querySelector('#twt-friend'); if (fr) s.selfAsFriend = fr.value;
       };
       panel.querySelectorAll('[data-sf]').forEach(btn => {
@@ -3589,20 +3421,39 @@ function renderToolThoughtWorkthrough(panel) {
       return;
     }
 
-    if (s.step === 1 || s.step === 2 || s.step === 4 || s.step === 5) {
+    if (s.step === 5) {
+      panel.innerHTML = `
+        ${header('Belief check')}
+        <div class="wt-step-heading">You've checked your belief. What would you like to do next?</div>
+        <button class="wt-primary-btn" id="twt-triage-done">Glad I checked my belief — I am done</button>
+        <button class="wt-primary-btn" id="twt-triage-continue" style="margin-top:8px">Even if my belief were true…</button>
+        <button class="wt-back-btn" id="twt-prev" style="margin-top:8px">← back</button>
+      `;
+      panel.querySelector('#twt-triage-done').addEventListener('click', () => { showPastDone(); });
+      panel.querySelector('#twt-triage-continue').addEventListener('click', () => { s.step = 6; renderWorkthrough(); });
+      panel.querySelector('#twt-prev').addEventListener('click', () => { s.step = 4; renderWorkthrough(); });
+      return;
+    }
+
+    if (s.step === 1 || s.step === 2 || s.step === 4 || s.step === 6) {
       const pst = PAST_STEPS[s.step];
       const isCbt = (s.step === 4);
       const isImmediate = (s.step === 2);
       const placeholder = `${pst.mild}\n${pst.serious}`;
+      const protectMild2 = 'The defensiveness is protecting me from having to admit they might be right. //';
+      const protectSerious2 = 'Going quiet is protecting me from more humiliation.';
       panel.innerHTML = `
         ${header(pst.label)}
         <div class="wt-step-heading">${escapeHtml(pst.prompt)}</div>
-${isCbt ? `<div class="wt-tool-helper">No is okay too.</div>` : ''}
         <textarea class="wt-textarea" id="twt-field" placeholder="${escapeHtml(placeholder)}" style="min-height:160px">${escapeHtml(s[pst.field])}</textarea>
         ${isCbt ? `
           <button type="button" class="rcs-trigger" id="twt-cheat">Not sure where to start? Browse thinking patterns →</button>
           <div class="rcs-notes-label">Reframe prompts</div>
           <textarea class="rcs-notes-textarea" id="twt-reframe" placeholder="Tap patterns in the drawer to collect prompts here, or write your own.">${escapeHtml(s.reframeNotes)}</textarea>
+        ` : ''}
+        ${isImmediate ? `
+          <div class="wt-tool-helper" style="margin-top:14px">Is your immediate reaction trying to protect you from something?</div>
+          <textarea class="wt-textarea" id="twt-protect" placeholder="${escapeHtml(protectMild2 + '\n' + protectSerious2)}" style="min-height:120px">${escapeHtml(s.protectionFrom)}</textarea>
         ` : ''}
         <button class="wt-primary-btn" id="twt-next">Next →</button>
         <button class="wt-back-btn" id="twt-prev" style="margin-top:8px">← back</button>
@@ -3610,6 +3461,7 @@ ${isCbt ? `<div class="wt-tool-helper">No is okay too.</div>` : ''}
       const save = () => {
         const el = panel.querySelector('#twt-field'); if (el) s[pst.field] = el.value;
         const re = panel.querySelector('#twt-reframe'); if (re) s.reframeNotes = re.value;
+        const pr = panel.querySelector('#twt-protect'); if (pr) s.protectionFrom = pr.value;
       };
       if (isCbt) {
         const reTa = panel.querySelector('#twt-reframe');
@@ -3632,7 +3484,7 @@ ${isCbt ? `<div class="wt-tool-helper">No is okay too.</div>` : ''}
       return;
     }
 
-    if (s.step === 6) {
+    if (s.step === 7) {
       panel.innerHTML = `
         ${header('Severity check')}
         <div class="wt-step-heading">Is this a one-time situation, or something ongoing and serious?</div>
@@ -3640,9 +3492,9 @@ ${isCbt ? `<div class="wt-tool-helper">No is okay too.</div>` : ''}
         <button class="wt-primary-btn" id="twt-sev-serious" style="margin-top:8px">Ongoing and serious</button>
         <button class="wt-back-btn" id="twt-prev" style="margin-top:8px">← back</button>
       `;
-      panel.querySelector('#twt-sev-onetime').addEventListener('click', () => { s.severity = 'onetime'; s.step = 7; renderWorkthrough(); });
-      panel.querySelector('#twt-sev-serious').addEventListener('click', () => { s.severity = 'serious'; s.step = 7; renderWorkthrough(); });
-      panel.querySelector('#twt-prev').addEventListener('click', () => { s.step = 5; renderWorkthrough(); });
+      panel.querySelector('#twt-sev-onetime').addEventListener('click', () => { s.severity = 'onetime'; s.step = 8; renderWorkthrough(); });
+      panel.querySelector('#twt-sev-serious').addEventListener('click', () => { s.severity = 'serious'; s.step = 8; renderWorkthrough(); });
+      panel.querySelector('#twt-prev').addEventListener('click', () => { s.step = 6; renderWorkthrough(); });
       return;
     }
 
@@ -3662,13 +3514,13 @@ ${isCbt ? `<div class="wt-tool-helper">No is okay too.</div>` : ''}
       const saveLevers = () => { LEVERS.forEach(l => { const el = panel.querySelector(`#twt-lever-${l.key}`); if (el) s.protection[l.key] = el.value; }); };
       LEVERS.forEach(l => { const el = panel.querySelector(`#twt-lever-${l.key}`); if (el) el.addEventListener('input', () => { s.protection[l.key] = el.value; }); });
       panel.querySelector('#twt-next').addEventListener('click', () => { saveLevers(); showPastDone(); });
-      panel.querySelector('#twt-prev').addEventListener('click', () => { saveLevers(); s.severity = null; s.step = 6; renderWorkthrough(); });
+      panel.querySelector('#twt-prev').addEventListener('click', () => { saveLevers(); s.severity = null; s.step = 7; renderWorkthrough(); });
       return;
     }
 
     panel.innerHTML = `
       ${header('Small action')}
-      <div class="wt-step-heading">One concrete thing — right now or today.</div>
+      <div class="wt-step-heading">One concrete thing you can do today.</div>
       <textarea class="wt-textarea" id="twt-field" placeholder="Reply thanking them and asking one clarifying question rather than explaining myself." style="min-height:110px">${escapeHtml(s.action)}</textarea>
       <button class="wt-primary-btn" id="twt-next">Finish</button>
       <button class="wt-back-btn" id="twt-prev" style="margin-top:8px">← back</button>
@@ -3676,23 +3528,23 @@ ${isCbt ? `<div class="wt-tool-helper">No is okay too.</div>` : ''}
     const ta = panel.querySelector('#twt-field');
     ta.addEventListener('input', () => { s.action = ta.value; });
     panel.querySelector('#twt-next').addEventListener('click', () => { s.action = ta.value; showPastDone(); });
-    panel.querySelector('#twt-prev').addEventListener('click', () => { s.action = ta.value; s.severity = null; s.step = 6; renderWorkthrough(); });
+    panel.querySelector('#twt-prev').addEventListener('click', () => { s.action = ta.value; s.severity = null; s.step = 7; renderWorkthrough(); });
     return;
   }
 
   // Future branch
   const FUTURE_STEPS = {
-    1: { label: 'Situation',     field: 'situation',   prompt: 'What\'s coming up?',
+    1: { label: 'Situation',          field: 'situation',        prompt: 'What\'s coming up?',
          hint: 'You have a performance review coming up and you\'re not sure how it\'s going to go — your mind keeps running worst-case scenarios.' },
-    2: { label: 'The dread',     field: 'dread',      prompt: 'What\'s the specific outcome you\'re afraid of?',
+    2: { label: 'Immediate reaction', field: 'immediateReaction', prompt: 'How do you feel?',
+         hint: 'Anxious. Already running worst-case scenarios and I haven\'t even walked in yet.' },
+    3: { label: 'The dread',          field: 'dread',             prompt: 'What\'s the specific outcome you\'re concerned with?',
          hint: 'They\'re going to tell me I\'m not meeting expectations and it will confirm everything I\'ve been afraid of.' },
-    3: { label: 'Reality check', field: 'reality',    prompt: 'Is this outcome actually likely, or are you predicting disaster without evidence?',
+    4: { label: 'Reality check',      field: 'reality',           prompt: 'Is this outcome actually likely?',
          hint: 'I don\'t actually know what they\'re going to say. I\'ve been functional and delivering — I\'m predicting disaster without evidence.' },
-    4: { label: 'ACT check',     field: 'act',       prompt: 'Even if it does happen, have you handled hard things before?',
-         hint: 'Even if the feedback is hard, I\'ve handled difficult conversations before and I can handle this one.' },
-    5: { label: 'Coping plan',   field: 'copingPlan', prompt: 'If it does happen, how will you handle it? Walk through the scenarios.',
-         hint: 'If they raise concerns: I\'ll listen fully before responding, ask for specific examples, and ask what support is available.' },
-    6: { label: 'Prep step',     field: 'prepStep',   prompt: 'One concrete thing you can do before it happens.',
+    5: { label: 'ACT check',          field: 'copingPlan',        prompt: 'If it does happen, how will you handle it? Have you handled similarly difficult things before?',
+         hint: 'I\'ve handled difficult conversations before and I can handle this one. If they raise concerns: I\'ll listen fully before responding, ask for specific examples, and ask what support is available.' },
+    6: { label: 'Prep step',          field: 'prepStep',          prompt: 'One concrete thing you can do before it happens.',
          hint: 'Write down three things I\'ve delivered this quarter so I\'m not going in empty-handed.' },
   };
 
@@ -3716,8 +3568,8 @@ ${isCbt ? `<div class="wt-tool-helper">No is okay too.</div>` : ''}
     panel.querySelector('#twt-save').addEventListener('click', () => {
       tkSaveRecord('situation_debrief', {
         branch: 'future',
-        situation: s.situation, dread: s.dread, reality: s.reality,
-        act: s.act, copingPlan: s.copingPlan, prepStep: s.prepStep,
+        situation: s.situation, immediateReaction: s.immediateReaction, protectionFrom: s.protectionFrom,
+        dread: s.dread, reality: s.reality, copingPlan: s.copingPlan, prepStep: s.prepStep,
       });
       showSaved('Saved');
       showFutureClosing();
@@ -3727,14 +3579,23 @@ ${isCbt ? `<div class="wt-tool-helper">No is okay too.</div>` : ''}
 
   const fst = FUTURE_STEPS[s.step];
   const isLast = (s.step === 6);
+  const isFutureImmediate = (s.step === 2);
+  const futureProtectHint = 'The anxiety is protecting me from being caught off guard — if I expect the worst, I won\'t be blindsided.';
   panel.innerHTML = `
     ${header(fst.label)}
     <div class="wt-step-heading">${escapeHtml(fst.prompt)}</div>
     <textarea class="wt-textarea" id="twt-field" placeholder="${escapeHtml(fst.hint)}" style="min-height:120px">${escapeHtml(s[fst.field])}</textarea>
+    ${isFutureImmediate ? `
+      <div class="wt-tool-helper" style="margin-top:14px">Is your feeling trying to protect you from something?</div>
+      <textarea class="wt-textarea" id="twt-protect" placeholder="${escapeHtml(futureProtectHint)}" style="min-height:120px">${escapeHtml(s.protectionFrom)}</textarea>
+    ` : ''}
     <button class="wt-primary-btn" id="twt-next">${isLast ? 'Finish' : 'Next →'}</button>
     <button class="wt-back-btn" id="twt-prev" style="margin-top:8px">← back</button>
   `;
-  const fsave = () => { const el = panel.querySelector('#twt-field'); if (el) s[fst.field] = el.value; };
+  const fsave = () => {
+    const el = panel.querySelector('#twt-field'); if (el) s[fst.field] = el.value;
+    const pr = panel.querySelector('#twt-protect'); if (pr) s.protectionFrom = pr.value;
+  };
   panel.querySelector('#twt-next').addEventListener('click', () => { fsave(); if (isLast) showFutureSave(); else { s.step++; renderWorkthrough(); } });
   panel.querySelector('#twt-prev').addEventListener('click', () => { fsave(); if (s.step === 1) { s.branch = null; } else { s.step--; } renderWorkthrough(); });
 }
@@ -3836,7 +3697,7 @@ function renderToolValuesCheck(panel) {
     } else if (s.sizeChoice === 'yes') {
       panel.innerHTML = `
         ${vcHeader(4, `Action · ${s.domain}`)}
-        <div class="wt-step-heading">One small thing this week that moves toward that person.</div>
+        <div class="wt-step-heading">One small thing you can do this week that moves toward that person.</div>
         <textarea class="wt-textarea" id="vc-action" placeholder="Pick one person on your team and have a conversation this week that's purely about their growth." style="min-height:100px">${escapeHtml(s.action)}</textarea>
         <button class="wt-primary-btn" id="vc-finish">Finish</button>
         <button class="wt-back-btn" id="vc-prev" style="margin-top:8px">← back</button>
@@ -3881,20 +3742,6 @@ function tkFmtTs(ts) {
 // ── Field visibility config ─────────────────────────────────────────────────
 // Set visible: false on any field to hide it from history cards.
 const TK_HIST_FIELD_CONFIG = {
-  belief: [
-    { key: 'emotion',          label: 'Emotion',                 visible: true, type: 'text',     placeholder: 'shame, hopelessness, …' },
-    { key: 'intensity',        label: 'Intensity (1–10)',         visible: true, type: 'range',    min: 1, max: 10 },
-    { key: 'facts',            label: 'Facts',                    visible: true, type: 'textarea', placeholder: 'What are the verifiable facts?' },
-    { key: 'thoughts',         label: 'Thoughts',                 visible: true, type: 'textarea', placeholder: 'What are you telling yourself?' },
-    { key: 'evidenceFor',      label: 'Evidence for',             visible: true, type: 'textarea', placeholder: '' },
-    { key: 'evidenceAgainst',  label: 'Evidence against',         visible: true, type: 'textarea', placeholder: '' },
-    { key: 'reinterpret',      label: 'Reinterpretation',         visible: true, type: 'textarea', placeholder: '' },
-    { key: 'newEmotion',       label: 'Updated emotion',          visible: true, type: 'text',     placeholder: 'Still disappointed, but lighter.' },
-    { key: 'newIntensity',     label: 'Updated intensity (1–10)', visible: true, type: 'range',    min: 1, max: 10 },
-    { key: 'reframeNotes',     label: 'Reframe notes',            visible: true, type: 'textarea', placeholder: '' },
-    { key: 'beliefIsAboutSelf',label: 'Belief about self?',       visible: true, type: 'chips',    options: [{value:'yes',label:'Yes'},{value:'no',label:'No'}] },
-    { key: 'selfAsFriend',     label: 'Self as friend',           visible: true, type: 'textarea', placeholder: '' },
-  ],
   rumination: [
     { key: 'ruminationText',  label: 'What was looping',          visible: true, type: 'textarea', placeholder: 'Describe what was looping in your mind…' },
     { key: 'symptoms',        label: 'Symptoms',                  visible: true, type: 'tags' },
@@ -3923,12 +3770,13 @@ const TK_HIST_FIELD_CONFIG = {
     ]},
   ],
   future: [
-    { key: 'situation',  label: 'Situation',    visible: true, type: 'textarea', placeholder: '' },
-    { key: 'dread',      label: 'The dread',    visible: true, type: 'textarea', placeholder: '' },
-    { key: 'reality',    label: 'Reality check',visible: true, type: 'textarea', placeholder: '' },
-    { key: 'act',        label: 'ACT check',    visible: true, type: 'textarea', placeholder: '' },
-    { key: 'copingPlan', label: 'Coping plan',  visible: true, type: 'textarea', placeholder: '' },
-    { key: 'prepStep',   label: 'Prep step',    visible: true, type: 'textarea', placeholder: '' },
+    { key: 'situation',        label: 'Situation',                    visible: true, type: 'textarea', placeholder: '' },
+    { key: 'immediateReaction',label: 'Immediate reaction',           visible: true, type: 'textarea', placeholder: '' },
+    { key: 'protectionFrom',   label: 'What you want protection from',visible: true, type: 'textarea', placeholder: '' },
+    { key: 'dread',            label: 'The dread',                    visible: true, type: 'textarea', placeholder: '' },
+    { key: 'reality',          label: 'Reality check',                visible: true, type: 'textarea', placeholder: '' },
+    { key: 'copingPlan',       label: 'ACT check',                    visible: true, type: 'textarea', placeholder: '' },
+    { key: 'prepStep',         label: 'Prep step',                    visible: true, type: 'textarea', placeholder: '' },
   ],
   values: [
     { key: 'domain',          label: 'Domain',            visible: true, type: 'domain' },
@@ -3941,7 +3789,7 @@ const TK_HIST_FIELD_CONFIG = {
 
 function tkHistSaveField(store, id, field, value) {
   let arr, saveFn;
-  if (store === 'belief' || store === 'rumination') { arr = loadTkThought();    saveFn = saveTkThought;    }
+  if (store === 'rumination') { arr = loadTkThought();    saveFn = saveTkThought;    }
   else if (store === 'past' || store === 'future')  { arr = loadTkSituation(); saveFn = saveTkSituation; }
   else if (store === 'values')                      { arr = loadTkValues();    saveFn = saveTkValues;    }
   else return;
@@ -4011,14 +3859,6 @@ function tkRenderHistField(cfg, d, id, store) {
 function tkHistRecActions(id, store) {
   return `<div class="entry-actions">
     <button class="entry-action-btn danger" data-tkdel="${id}" data-tkstore="${store}">delete</button>
-  </div>`;
-}
-
-function tkHistBeliefHtml(r) {
-  const fields = TK_HIST_FIELD_CONFIG.belief.map(cfg => tkRenderHistField(cfg, r.data, r.id, 'belief')).join('');
-  return `<div class="tk-hist-rec">
-    <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, 'belief')}</div>
-    ${fields}
   </div>`;
 }
 
@@ -4145,13 +3985,12 @@ function renderTkHistory(container) {
   const values    = loadTkValues();
   const exposures = loadTkExp();
 
-  const beliefRecs  = thought.filter(r => r.branch === 'belief').sort((a,b) => b.ts - a.ts);
   const rumRecs     = thought.filter(r => r.branch === 'rumination').sort((a,b) => b.ts - a.ts);
   const pastRecs    = situation.filter(r => r.branch === 'past').sort((a,b) => b.ts - a.ts);
   const futureRecs  = situation.filter(r => r.branch === 'future').sort((a,b) => b.ts - a.ts);
   const valuesRecs  = values.sort((a,b) => b.ts - a.ts);
 
-  const isEmpty = !beliefRecs.length && !rumRecs.length && !pastRecs.length && !futureRecs.length && !valuesRecs.length && !exposures.length;
+  const isEmpty = !rumRecs.length && !pastRecs.length && !futureRecs.length && !valuesRecs.length && !exposures.length;
   if (isEmpty) {
     container.innerHTML = `
       <div class="date-line" style="text-align:center">Toolkit</div>
@@ -4162,7 +4001,6 @@ function renderTkHistory(container) {
   }
 
   const sections = [
-    { key: 'belief',     label: 'Thought · Belief',     recs: beliefRecs,  fn: tkHistBeliefHtml  },
     { key: 'rumination', label: 'Thought · Rumination',  recs: rumRecs,     fn: tkHistRumHtml     },
     { key: 'past',       label: 'Situation · Past',      recs: pastRecs,    fn: tkHistPastHtml    },
     { key: 'future',     label: 'Situation · Future',    recs: futureRecs,  fn: tkHistFutureHtml  },
@@ -4203,7 +4041,7 @@ function renderTkHistory(container) {
     btn.addEventListener('click', () => {
       const id = btn.dataset.tkdel, store = btn.dataset.tkstore;
       if (!confirm('Delete this record?')) return;
-      if (store === 'belief' || store === 'rumination') saveTkThought(loadTkThought().filter(r => r.id !== id));
+      if (store === 'rumination') saveTkThought(loadTkThought().filter(r => r.id !== id));
       else if (store === 'past' || store === 'future')  saveTkSituation(loadTkSituation().filter(r => r.id !== id));
       else if (store === 'values')                      saveTkValues(loadTkValues().filter(r => r.id !== id));
       renderTkHistory(container);
