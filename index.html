@@ -2804,8 +2804,8 @@ function renderWTToolView(container) {
   const toolName = tool ? tool.name : toolId;
 
   const branchLabels = {
-    thought_check:     { rumination: 'Rumination break', intrusion_check: 'Intrusion Check' },
-    situation_debrief: { past: 'Past · process', future: 'Future · plan' },
+    thought_check:     { rumination: 'Rumination Break', intrusion_check: 'Intrusion Check' },
+    situation_debrief: { past: 'Past · Process', future: 'Future · Plan' },
     values_compass:    { alignment: 'Value Alignment', injustice: 'Injustice Navigation' },
   };
   let branch = null;
@@ -3157,7 +3157,7 @@ function renderToolThoughtRecord(panel) {
         <button class="tc-card tc-card--sky" id="tc-rum">
           <div class="tc-card-body">
             <div class="tc-tag">反芻</div>
-            <div class="tc-card-title">Rumination break</div>
+            <div class="tc-card-title">Rumination Break</div>
             <div class="tc-card-sub">To interrupt the rumination loop, and reset.</div>
           </div>
           <span class="tc-card-arrow">→</span>
@@ -3391,7 +3391,7 @@ function renderToolThoughtWorkthrough(panel) {
         <button class="tc-card tc-card--slate" id="sc-past">
           <div class="tc-card-body">
             <div class="tc-tag">過去</div>
-            <div class="tc-card-title">Past · process</div>
+            <div class="tc-card-title">Past · Process</div>
             <div class="tc-card-sub">Process a past event and figure out what to do.</div>
           </div>
           <span class="tc-card-arrow">→</span>
@@ -3399,7 +3399,7 @@ function renderToolThoughtWorkthrough(panel) {
         <button class="tc-card tc-card--amber" id="sc-future">
           <div class="tc-card-body">
             <div class="tc-tag">未来</div>
-            <div class="tc-card-title">Future · plan</div>
+            <div class="tc-card-title">Future · Plan</div>
             <div class="tc-card-sub">Think through an upcoming event and have a plan.</div>
           </div>
           <span class="tc-card-arrow">→</span>
