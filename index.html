@@ -1754,6 +1754,7 @@
   .tk-entry[data-tool="values_compass"]   { box-shadow: inset 3px 0 0 var(--sage); }
   .tk-entry[data-tool="exposure_rewire"]  { box-shadow: inset 3px 0 0 var(--amber); }
   #wt-tool-panel[data-tool="values_compass"] { --amber: var(--sage); }
+  #wt-tool-panel[data-tool="values_compass"][data-branch="injustice"]  { --amber: var(--sky); }
   #wt-tool-panel[data-tool="thought_check"][data-branch="rumination"]  { --amber: var(--sky); }
   #wt-tool-panel[data-tool="situation_debrief"][data-branch="past"]    { --amber: var(--slate); }
   .tk-entry-name {
@@ -2696,7 +2697,7 @@ function tkSaveRecord(type, data) {
   } else if (type === 'situation_debrief') {
     const arr = loadTkSituation(); arr.push({ ...rec, branch: data.branch }); saveTkSituation(arr);
   } else if (type === 'values_compass') {
-    const arr = loadTkValues(); arr.push(rec); saveTkValues(arr);
+    const arr = loadTkValues(); arr.push({ ...rec, branch: data.branch || 'alignment' }); saveTkValues(arr);
   }
 }
 
@@ -2729,8 +2730,8 @@ const TK_CATALOGUE = [
     name: 'Values Compass',
     tag: '価値',
     variant: 'sage',
-    cue: 'There might be a wedge between how I\'m living and what I value; I want to articulate it.',
-    example: 'I care deeply about developing my team, but my role keeps pulling me toward politics and upward management.',
+    cue: 'There is a wedge between my values and the world.',
+    example: 'I am swallowed by thoughts about injustice in this world.\nI care deeply about people, but my role keeps pulling me toward politics.',
   },
   {
     id: 'exposure_rewire',
@@ -2802,10 +2803,12 @@ function renderWTToolView(container) {
   const branchLabels = {
     thought_check:     { rumination: 'Rumination break' },
     situation_debrief: { past: 'Past · process', future: 'Future · plan' },
+    values_compass:    { alignment: 'Value Alignment', injustice: 'Injustice Navigation' },
   };
   let branch = null;
-  if (toolId === 'thought_check')      branch = (wtState.draft._tc  || {}).branch;
+  if (toolId === 'thought_check')          branch = (wtState.draft._tc  || {}).branch;
   else if (toolId === 'situation_debrief') branch = (wtState.draft._twt || {}).branch;
+  else if (toolId === 'values_compass')    branch = (wtState.draft._vc  || {}).branch;
   const branchLabel = branch && branchLabels[toolId] ? branchLabels[toolId][branch] : null;
   const title = branchLabel ? `${toolName} - ${branchLabel}` : toolName;
 
@@ -3602,11 +3605,145 @@ function renderToolThoughtWorkthrough(panel) {
 
 function renderToolValuesCheck(panel) {
   const DOMAINS = ['Work', 'Health', 'Friendship', 'Family'];
-  const s = wtState.draft._vc || { step: 1, domain: '', personStatement: '', closeness: 3, action: '', sizeChoice: null };
+  const s = wtState.draft._vc || { branch: null, step: 1, domain: '', personStatement: '', closeness: 3, action: '', sizeChoice: null };
   wtState.draft._vc = s;
+  if (s.branch === undefined) s.branch = null;
+  panel.dataset.branch = s.branch || '';
+
+  if (s.branch === null) {
+    panel.innerHTML = `
+      <div class="tc-question">What kind of values tension is this?</div>
+      <div class="tc-cards">
+        <button class="tc-card tc-card--sage" id="vc-alignment">
+          <div class="tc-card-body">
+            <span class="tc-tag">一致</span>
+            <div class="tc-card-title">Value Alignment</div>
+            <div class="tc-card-sub">To align actions with values.</div>
+          </div>
+          <span class="tc-card-arrow">→</span>
+        </button>
+        <button class="tc-card tc-card--sky" id="vc-injustice">
+          <div class="tc-card-body">
+            <span class="tc-tag">公正</span>
+            <div class="tc-card-title">Injustice Navigation</div>
+            <div class="tc-card-sub">To reorient in the face of injustice or unfairness.</div>
+          </div>
+          <span class="tc-card-arrow">→</span>
+        </button>
+      </div>
+    `;
+    panel.querySelector('#vc-alignment').addEventListener('click', () => { s.branch = 'alignment'; s.step = 1; renderWorkthrough(); });
+    panel.querySelector('#vc-injustice').addEventListener('click', () => { s.branch = 'injustice'; s.step = 1; renderWorkthrough(); });
+    return;
+  }
+
+  if (s.branch === 'injustice') {
+    if (s.injSituation === undefined) s.injSituation = '';
+    if (s.injIdentity  === undefined) s.injIdentity  = '';
+    if (s.injMeaning   === undefined) s.injMeaning   = '';
+    if (s.injAgency    === undefined) s.injAgency    = '';
+    if (s.injAction    === undefined) s.injAction    = '';
+
+    const IJ_TOTAL = 5;
+    const ijHeader = (cur, label) => `
+      <div class="wt-progress-row">
+        <div class="wt-progress-dots">${Array.from({ length: IJ_TOTAL }, (_, i) => {
+          const n = i + 1;
+          return `<span class="wt-dot ${n === cur ? 'active' : n < cur ? 'done' : ''}"></span>`;
+        }).join('')}</div>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">${cur}/${IJ_TOTAL}</span>
+      </div>
+      <div class="wt-step-label">${escapeHtml(label)}</div>`;
+
+    const injSaveRecord = () => {
+      tkSaveRecord('values_compass', {
+        branch: 'injustice',
+        injSituation: s.injSituation, injIdentity: s.injIdentity,
+        injMeaning: s.injMeaning, injAgency: s.injAgency, injAction: s.injAction,
+      });
+      showSaved('Saved');
+      tkBackToLanding();
+    };
+
+    if (s.step === 1) {
+      panel.innerHTML = `
+        ${ijHeader(1, 'Situation')}
+        <div class="wt-step-heading">What is the injustice event?</div>
+        <textarea class="wt-textarea" id="ij-situation" placeholder="Someone who treated me badly appears to be doing well." style="min-height:120px">${escapeHtml(s.injSituation)}</textarea>
+        <button class="wt-primary-btn" id="ij-next">Next →</button>
+        <button class="wt-back-btn" id="ij-prev" style="margin-top:8px">← back</button>
+      `;
+      const ta = panel.querySelector('#ij-situation');
+      ta.addEventListener('input', () => { s.injSituation = ta.value; });
+      panel.querySelector('#ij-next').addEventListener('click', () => { s.step = 2; renderWorkthrough(); });
+      panel.querySelector('#ij-prev').addEventListener('click', () => { s.branch = null; renderWorkthrough(); });
+    } else if (s.step === 2) {
+      panel.innerHTML = `
+        ${ijHeader(2, 'Identity')}
+        <div class="wt-step-heading">What kind of person do you want to be even in an unfair world? Which values matter to you regardless of outcome?</div>
+        <textarea class="wt-textarea" id="ij-identity" placeholder="Someone who holds justice as a standard, not a guarantee. Someone who shows up for others." style="min-height:140px">${escapeHtml(s.injIdentity)}</textarea>
+        <button class="wt-primary-btn" id="ij-next">Next →</button>
+        <button class="wt-back-btn" id="ij-prev" style="margin-top:8px">← back</button>
+      `;
+      const ta = panel.querySelector('#ij-identity');
+      ta.addEventListener('input', () => { s.injIdentity = ta.value; });
+      panel.querySelector('#ij-next').addEventListener('click', () => { s.step = 3; renderWorkthrough(); });
+      panel.querySelector('#ij-prev').addEventListener('click', () => { s.step = 1; renderWorkthrough(); });
+    } else if (s.step === 3) {
+      panel.innerHTML = `
+        ${ijHeader(3, 'Meaning')}
+        <div class="wt-step-heading">What strengths did you develop because you survived the injustice? What do you understand now that you didn't before?</div>
+        <textarea class="wt-textarea" id="ij-meaning" placeholder="I developed the ability to read people quickly. I understand that being a victim says nothing true about me." style="min-height:140px">${escapeHtml(s.injMeaning)}</textarea>
+        <button class="wt-primary-btn" id="ij-next">Next →</button>
+        <button class="wt-back-btn" id="ij-prev" style="margin-top:8px">← back</button>
+      `;
+      const ta = panel.querySelector('#ij-meaning');
+      ta.addEventListener('input', () => { s.injMeaning = ta.value; });
+      panel.querySelector('#ij-next').addEventListener('click', () => { s.step = 4; renderWorkthrough(); });
+      panel.querySelector('#ij-prev').addEventListener('click', () => { s.step = 2; renderWorkthrough(); });
+    } else if (s.step === 4) {
+      panel.innerHTML = `
+        ${ijHeader(4, 'Agency')}
+        <div class="wt-step-heading">What are things you can vs. cannot control at the moment?</div>
+        <textarea class="wt-textarea" id="ij-agency" placeholder="Cannot: whether bullies prosper, whether bullies repented. Can: who gets to be involved in my life, how I react to events." style="min-height:140px">${escapeHtml(s.injAgency)}</textarea>
+        <button class="wt-primary-btn" id="ij-next">Next →</button>
+        <button class="wt-back-btn" id="ij-prev" style="margin-top:8px">← back</button>
+      `;
+      const ta = panel.querySelector('#ij-agency');
+      ta.addEventListener('input', () => { s.injAgency = ta.value; });
+      panel.querySelector('#ij-next').addEventListener('click', () => { s.step = 5; renderWorkthrough(); });
+      panel.querySelector('#ij-prev').addEventListener('click', () => { s.step = 3; renderWorkthrough(); });
+    } else if (s.step === 5) {
+      panel.innerHTML = `
+        ${ijHeader(5, 'Action')}
+        <div class="tk-note-card">The problem is human-sized, not existentially infinite.</div>
+        <div class="wt-step-heading" style="margin-top:16px">Given that unfairness exists, what would caring for myself wisely look like today?</div>
+        <textarea class="wt-textarea" id="ij-action" placeholder="Rest. Talk about it. Do something enjoyable. Don't let injustice turn you into a smaller version of yourself." style="min-height:120px">${escapeHtml(s.injAction)}</textarea>
+        <button class="wt-primary-btn" id="ij-next">Finish</button>
+        <button class="wt-back-btn" id="ij-prev" style="margin-top:8px">← back</button>
+      `;
+      const ta = panel.querySelector('#ij-action');
+      ta.addEventListener('input', () => { s.injAction = ta.value; });
+      panel.querySelector('#ij-next').addEventListener('click', () => { s.step = 'done'; renderWorkthrough(); });
+      panel.querySelector('#ij-prev').addEventListener('click', () => { s.step = 4; renderWorkthrough(); });
+    } else if (s.step === 'done') {
+      panel.innerHTML = `
+        <div class="wt-step-heading">Done.</div>
+        <div class="wt-tool-helper" style="margin-bottom:16px">Your intention: <em>${escapeHtml(s.injAction || '—')}</em></div>
+        <div class="tk-save-row">
+          <button class="wt-primary-btn" id="ij-save">Save</button>
+          <button class="tk-discard-btn" id="ij-discard">Skip</button>
+        </div>
+      `;
+      panel.querySelector('#ij-save').addEventListener('click', injSaveRecord);
+      panel.querySelector('#ij-discard').addEventListener('click', tkBackToLanding);
+    }
+    return;
+  }
 
   const vcSaveRecord = () => {
     tkSaveRecord('values_compass', {
+      branch: 'alignment',
       domain: s.domain, personStatement: s.personStatement,
       closeness: s.closeness, action: s.action, sizeChoice: s.sizeChoice,
     });
@@ -3635,6 +3772,7 @@ function renderToolValuesCheck(panel) {
       </div>
       <input class="wt-input" id="vc-custom-domain" type="text" placeholder="Custom" style="margin-top:0px;margin-bottom:14px" value="${isCustom ? escapeHtml(s.domain) : ''}">
       <button class="wt-primary-btn" id="vc-next" ${s.domain ? '' : 'disabled'}>Next →</button>
+      <button class="wt-back-btn" id="vc-prev" style="margin-top:8px">← back</button>
     `;
     const customInput = panel.querySelector('#vc-custom-domain');
     panel.querySelectorAll('[data-domain]').forEach(btn => {
@@ -3651,6 +3789,7 @@ function renderToolValuesCheck(panel) {
       panel.querySelector('#vc-next').disabled = !customInput.value;
     });
     panel.querySelector('#vc-next').addEventListener('click', () => { s.step = 2; renderWorkthrough(); });
+    panel.querySelector('#vc-prev').addEventListener('click', () => { s.branch = null; renderWorkthrough(); });
   } else if (s.step === 2) {
     panel.innerHTML = `
       ${vcHeader(2, `Identity · ${s.domain}`)}
@@ -3785,6 +3924,13 @@ const TK_HIST_FIELD_CONFIG = {
     { key: 'sizeChoice',      label: 'Size',              visible: true, type: 'chips',    options: [{value:'yes',label:'Small step'},{value:'no',label:'Bigger shift'}] },
     { key: 'action',          label: 'Action',            visible: true, type: 'textarea', placeholder: '' },
   ],
+  injustice: [
+    { key: 'injSituation', label: 'Injustice event', visible: true, type: 'textarea', placeholder: '' },
+    { key: 'injIdentity',  label: 'Identity',        visible: true, type: 'textarea', placeholder: '' },
+    { key: 'injMeaning',   label: 'Meaning',         visible: true, type: 'textarea', placeholder: '' },
+    { key: 'injAgency',    label: 'Agency',          visible: true, type: 'textarea', placeholder: '' },
+    { key: 'injAction',    label: 'Intention',       visible: true, type: 'textarea', placeholder: '' },
+  ],
 };
 
 function tkHistSaveField(store, id, field, value) {
@@ -3894,6 +4040,14 @@ function tkHistValuesHtml(r) {
   </div>`;
 }
 
+function tkHistInjusticeHtml(r) {
+  const fields = TK_HIST_FIELD_CONFIG.injustice.map(cfg => tkRenderHistField(cfg, r.data, r.id, 'values')).join('');
+  return `<div class="tk-hist-rec">
+    <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, 'values')}</div>
+    ${fields}
+  </div>`;
+}
+
 function tkHistExposureHtml(all) {
   if (!all.length) return `<div class="exp-nudge" style="border-left-color:var(--ink-faint)">No exposures recorded yet.</div>`;
 
@@ -3985,12 +4139,13 @@ function renderTkHistory(container) {
   const values    = loadTkValues();
   const exposures = loadTkExp();
 
-  const rumRecs     = thought.filter(r => r.branch === 'rumination').sort((a,b) => b.ts - a.ts);
-  const pastRecs    = situation.filter(r => r.branch === 'past').sort((a,b) => b.ts - a.ts);
-  const futureRecs  = situation.filter(r => r.branch === 'future').sort((a,b) => b.ts - a.ts);
-  const valuesRecs  = values.sort((a,b) => b.ts - a.ts);
+  const rumRecs       = thought.filter(r => r.branch === 'rumination').sort((a,b) => b.ts - a.ts);
+  const pastRecs      = situation.filter(r => r.branch === 'past').sort((a,b) => b.ts - a.ts);
+  const futureRecs    = situation.filter(r => r.branch === 'future').sort((a,b) => b.ts - a.ts);
+  const valuesRecs    = values.filter(r => r.branch !== 'injustice').sort((a,b) => b.ts - a.ts);
+  const injusticeRecs = values.filter(r => r.branch === 'injustice').sort((a,b) => b.ts - a.ts);
 
-  const isEmpty = !rumRecs.length && !pastRecs.length && !futureRecs.length && !valuesRecs.length && !exposures.length;
+  const isEmpty = !rumRecs.length && !pastRecs.length && !futureRecs.length && !valuesRecs.length && !injusticeRecs.length && !exposures.length;
   if (isEmpty) {
     container.innerHTML = `
       <div class="date-line" style="text-align:center">Toolkit</div>
@@ -4001,11 +4156,12 @@ function renderTkHistory(container) {
   }
 
   const sections = [
-    { key: 'rumination', label: 'Thought · Rumination',  recs: rumRecs,     fn: tkHistRumHtml     },
-    { key: 'past',       label: 'Situation · Past',      recs: pastRecs,    fn: tkHistPastHtml    },
-    { key: 'future',     label: 'Situation · Future',    recs: futureRecs,  fn: tkHistFutureHtml  },
-    { key: 'values',     label: 'Values',                recs: valuesRecs,  fn: tkHistValuesHtml  },
-    { key: 'exposure',   label: 'Exposure',              recs: exposures,   fn: null              },
+    { key: 'rumination', label: 'Thought · Rumination',       recs: rumRecs,       fn: tkHistRumHtml      },
+    { key: 'past',       label: 'Situation · Past',           recs: pastRecs,      fn: tkHistPastHtml     },
+    { key: 'future',     label: 'Situation · Future',         recs: futureRecs,    fn: tkHistFutureHtml   },
+    { key: 'values',     label: 'Values · Alignment',         recs: valuesRecs,    fn: tkHistValuesHtml   },
+    { key: 'injustice',  label: 'Values · Injustice',         recs: injusticeRecs, fn: tkHistInjusticeHtml},
+    { key: 'exposure',   label: 'Exposure',                   recs: exposures,     fn: null               },
   ];
 
   const sectionsHtml = sections.filter(s => s.recs.length).map(s => {
