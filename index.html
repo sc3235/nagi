@@ -1905,7 +1905,7 @@
 
 <header class="app-bar">
   <button class="back-btn hidden" id="back-btn">← home</button>
-  <div class="brand" id="app-brand" style="visibility:hidden">Nagi<em>.</em></div>
+  <div class="brand" id="app-brand" style="display:none">Nagi<em>.</em></div>
   <nav class="nav-tabs" id="nav-tabs" style="display:none">
     <button class="active" data-view="today">Today</button>
     <button data-view="history">History</button>
@@ -2771,6 +2771,7 @@ const TK_CATALOGUE = [
 function renderWorkthrough() {
   const container = document.getElementById('workthrough-content');
   if (!container) return;
+  requestAnimationFrame(() => { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; });
   const tkTabsEl = document.getElementById('toolkit-tabs');
 
   if (wtState.step === 0) {
@@ -4843,6 +4844,7 @@ document.querySelectorAll('#nav-tabs button').forEach(btn => {
     document.getElementById(`view-${view}`).classList.add('active');
     if (view === 'today')   renderToday();
     if (view === 'history') renderHistory();
+    requestAnimationFrame(() => { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; });
   });
 });
 
