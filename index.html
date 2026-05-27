@@ -61,7 +61,7 @@
     background-attachment: fixed;
   }
   button, input, textarea { font-family: inherit; color: inherit; }
-  button { background: none; border: none; padding: 0; cursor: pointer; }
+  button { background: none; border: none; padding: 0; cursor: pointer; touch-action: manipulation; }
 
 
   header.app-bar {
@@ -2737,7 +2737,7 @@ const TK_CATALOGUE = [
   {
     id: 'anticipation_plan',
     name: 'Anticipation Planning',
-    tag: '心配',
+    tag: '予想',
     variant: 'slate',
     cue: 'I\'m worrying about something coming up, I want to have a plan.',
     example: 'I\'m worried about an upcoming review.',
@@ -2932,6 +2932,7 @@ function renderToolExposure(panel) {
       }
     }
     html += `<button class="wt-primary-btn" id="exp-next" style="margin-top:10px" ${s.theme.trim() ? '' : 'disabled'}>Next →</button>`;
+    html += `<button class="wt-back-btn" id="exp-back" style="margin-top:6px">← back</button>`;
     const expCount = loadTkExp().length;
     if (expCount) {
       html += `<button class="exp-record-link" id="exp-view-record">↳ Your survival record (${expCount})</button>`;
@@ -3046,6 +3047,7 @@ function renderToolExposure(panel) {
 
   const backBtnEl = panel.querySelector('#exp-back');
   if (backBtnEl) backBtnEl.addEventListener('click', () => {
+    if (s.step === 'theme') { tkBackToLanding(); return; }
     const map = { situation: 'theme', fear: 'situation', values: 'fear', ready: 'values', outcome: 'ready', survived: 'outcome' };
     s.step = map[s.step] || 'theme';
     renderWorkthrough();
@@ -3152,11 +3154,16 @@ function renderToolThoughtRecord(panel) {
     intStep: 1, intContext: '', intIntrusion: '', intAction: '',
   };
   wtState.draft._tc = s;
-  if (s.rumStep === undefined)      s.rumStep = 1;
-  if (s.intStep === undefined)     s.intStep = 1;
-  if (s.intContext === undefined)  s.intContext = '';
-  if (s.intIntrusion === undefined) s.intIntrusion = '';
-  if (s.intAction === undefined)   s.intAction = '';
+  if (s.rumStep === undefined)        s.rumStep = 1;
+  if (s.ruminationText === undefined) s.ruminationText = '';
+  if (!Array.isArray(s.symptoms))     s.symptoms = [];
+  if (s.customSymptom === undefined)  s.customSymptom = '';
+  if (s.newInfoEmerging === undefined) s.newInfoEmerging = null;
+  if (s.chosenAction === undefined)   s.chosenAction = '';
+  if (s.intStep === undefined)        s.intStep = 1;
+  if (s.intContext === undefined)     s.intContext = '';
+  if (s.intIntrusion === undefined)   s.intIntrusion = '';
+  if (s.intAction === undefined)      s.intAction = '';
   panel.dataset.branch = s.branch || '';
 
   const header = (cur, total, label) => {
@@ -3172,33 +3179,6 @@ function renderToolThoughtRecord(panel) {
       <div class="wt-step-label">${escapeHtml(label)}</div>`;
   };
 
-  if (s.branch === null) {
-    panel.innerHTML = `
-      <div class="tc-question">What do you need <em>right now</em>?</div>
-      <div class="tc-cards">
-        <button class="tc-card tc-card--sky" id="tc-rum">
-          <div class="tc-card-body">
-            <div class="tc-tag">反芻</div>
-            <div class="tc-card-title">Rumination Break</div>
-            <div class="tc-card-sub">To interrupt the rumination loop, and reset.</div>
-          </div>
-          <span class="tc-card-arrow">→</span>
-        </button>
-        <button class="tc-card tc-card--sage" id="tc-int">
-          <div class="tc-card-body">
-            <div class="tc-tag">閃念</div>
-            <div class="tc-card-title">Intrusion Check</div>
-            <div class="tc-card-sub">To check a flashing negative thought.</div>
-          </div>
-          <span class="tc-card-arrow">→</span>
-        </button>
-      </div>
-    `;
-    panel.querySelector('#tc-rum').addEventListener('click', () => { s.branch = 'rumination'; renderWorkthrough(); });
-    panel.querySelector('#tc-int').addEventListener('click', () => { s.branch = 'intrusion_check'; renderWorkthrough(); });
-    return;
-  }
-
   if (s.branch === 'rumination') {
     const RUM_TOTAL = 4;
     if (s.rumStep === 1) {
@@ -3212,7 +3192,7 @@ function renderToolThoughtRecord(panel) {
       const ta = panel.querySelector('#rb-rumination');
       ta.addEventListener('input', () => { s.ruminationText = ta.value; });
       panel.querySelector('#rb-next').addEventListener('click', () => { s.ruminationText = ta.value; s.rumStep = 2; renderWorkthrough(); });
-      panel.querySelector('#rb-prev').addEventListener('click', () => { s.ruminationText = ta.value; s.branch = null; renderWorkthrough(); });
+      panel.querySelector('#rb-prev').addEventListener('click', () => { tkBackToLanding(); });
       return;
     }
     if (s.rumStep === 2) {
@@ -3315,7 +3295,7 @@ function renderToolThoughtRecord(panel) {
       const ta = panel.querySelector('#int-context');
       ta.addEventListener('input', () => { s.intContext = ta.value; });
       panel.querySelector('#int-next').addEventListener('click', () => { s.intContext = ta.value; s.intStep = 2; renderWorkthrough(); });
-      panel.querySelector('#int-prev').addEventListener('click', () => { s.intContext = ta.value; s.branch = null; renderWorkthrough(); });
+      panel.querySelector('#int-prev').addEventListener('click', () => { tkBackToLanding(); });
       return;
     }
 
@@ -3405,33 +3385,6 @@ function renderToolThoughtWorkthrough(panel) {
   if (s.copingPlan === undefined) s.copingPlan = '';
   if (s.prepStep === undefined) s.prepStep = '';
   panel.dataset.branch = s.branch || '';
-
-  if (s.branch === null) {
-    panel.innerHTML = `
-      <div class="tc-question">Is this something that <em>already happened</em>, or something coming up?</div>
-      <div class="tc-cards">
-        <button class="tc-card tc-card--slate" id="sc-past">
-          <div class="tc-card-body">
-            <div class="tc-tag">過去</div>
-            <div class="tc-card-title">Past · Process</div>
-            <div class="tc-card-sub">Process a past event and figure out what to do.</div>
-          </div>
-          <span class="tc-card-arrow">→</span>
-        </button>
-        <button class="tc-card tc-card--amber" id="sc-future">
-          <div class="tc-card-body">
-            <div class="tc-tag">未来</div>
-            <div class="tc-card-title">Future · Plan</div>
-            <div class="tc-card-sub">Think through an upcoming event and have a plan.</div>
-          </div>
-          <span class="tc-card-arrow">→</span>
-        </button>
-      </div>
-    `;
-    panel.querySelector('#sc-past').addEventListener('click', () => { s.branch = 'past'; s.step = 1; renderWorkthrough(); });
-    panel.querySelector('#sc-future').addEventListener('click', () => { s.branch = 'future'; s.step = 1; renderWorkthrough(); });
-    return;
-  }
 
   const total = (s.branch === 'past') ? 8 : 6;
   const dotsHtml = Array.from({ length: total }, (_, i) => {
@@ -3597,7 +3550,7 @@ function renderToolThoughtWorkthrough(panel) {
       panel.querySelector('#twt-next').addEventListener('click', () => { save(); s.step++; renderWorkthrough(); });
       panel.querySelector('#twt-prev').addEventListener('click', () => {
         save();
-        if (s.step === 1) { s.branch = null; } else { s.step--; }
+        if (s.step === 1) { tkBackToLanding(); return; } else { s.step--; }
         renderWorkthrough();
       });
       return;
@@ -3716,7 +3669,7 @@ function renderToolThoughtWorkthrough(panel) {
     const pr = panel.querySelector('#twt-protect'); if (pr) s.protectionFrom = pr.value;
   };
   panel.querySelector('#twt-next').addEventListener('click', () => { fsave(); if (isLast) showFutureSave(); else { s.step++; renderWorkthrough(); } });
-  panel.querySelector('#twt-prev').addEventListener('click', () => { fsave(); if (s.step === 1) { s.branch = null; } else { s.step--; } renderWorkthrough(); });
+  panel.querySelector('#twt-prev').addEventListener('click', () => { fsave(); if (s.step === 1) { tkBackToLanding(); return; } s.step--; renderWorkthrough(); });
 }
 
 function renderToolValuesCheck(panel) {
@@ -3725,33 +3678,6 @@ function renderToolValuesCheck(panel) {
   wtState.draft._vc = s;
   if (s.branch === undefined) s.branch = null;
   panel.dataset.branch = s.branch || '';
-
-  if (s.branch === null) {
-    panel.innerHTML = `
-      <div class="tc-question">What kind of values tension is this?</div>
-      <div class="tc-cards">
-        <button class="tc-card tc-card--sage" id="vc-alignment">
-          <div class="tc-card-body">
-            <span class="tc-tag">一致</span>
-            <div class="tc-card-title">Value Alignment</div>
-            <div class="tc-card-sub">To align actions with values.</div>
-          </div>
-          <span class="tc-card-arrow">→</span>
-        </button>
-        <button class="tc-card tc-card--sky" id="vc-injustice">
-          <div class="tc-card-body">
-            <span class="tc-tag">公正</span>
-            <div class="tc-card-title">Injustice Navigation</div>
-            <div class="tc-card-sub">To reorient in the face of injustice or unfairness.</div>
-          </div>
-          <span class="tc-card-arrow">→</span>
-        </button>
-      </div>
-    `;
-    panel.querySelector('#vc-alignment').addEventListener('click', () => { s.branch = 'alignment'; s.step = 1; renderWorkthrough(); });
-    panel.querySelector('#vc-injustice').addEventListener('click', () => { s.branch = 'injustice'; s.step = 1; renderWorkthrough(); });
-    return;
-  }
 
   if (s.branch === 'injustice') {
     if (s.injSituation === undefined) s.injSituation = '';
@@ -3792,7 +3718,7 @@ function renderToolValuesCheck(panel) {
       const ta = panel.querySelector('#ij-situation');
       ta.addEventListener('input', () => { s.injSituation = ta.value; });
       panel.querySelector('#ij-next').addEventListener('click', () => { s.step = 2; renderWorkthrough(); });
-      panel.querySelector('#ij-prev').addEventListener('click', () => { s.branch = null; renderWorkthrough(); });
+      panel.querySelector('#ij-prev').addEventListener('click', () => { tkBackToLanding(); });
     } else if (s.step === 2) {
       panel.innerHTML = `
         ${ijHeader(2, 'Identity')}
@@ -3905,7 +3831,7 @@ function renderToolValuesCheck(panel) {
       panel.querySelector('#vc-next').disabled = !customInput.value;
     });
     panel.querySelector('#vc-next').addEventListener('click', () => { s.step = 2; renderWorkthrough(); });
-    panel.querySelector('#vc-prev').addEventListener('click', () => { s.branch = null; renderWorkthrough(); });
+    panel.querySelector('#vc-prev').addEventListener('click', () => { tkBackToLanding(); });
   } else if (s.step === 2) {
     panel.innerHTML = `
       ${vcHeader(2, `Identity · ${s.domain}`)}
