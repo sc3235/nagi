@@ -6,16 +6,16 @@ A private anxiety-management companion. Single HTML file, `localStorage`-only, d
 
 ## Home screen
 
-Four tiles navigate to the main sections. Each tile shows live status (today's score, streak, current range).
+A serif tagline ("Impermanence. *Nothing spans all time or space.*") sits above four tiles. Each tile is a button to its section; Sleep and HAM-A tiles also surface live status pills.
 
 | Tile | Tag | Screen |
 |---|---|---|
-| Sleep | 眠り | Daily sleep-hygiene checklist |
+| Sleep | 眠り | Daily sleep checklist |
 | HAM-A | 焦り | Daily anxiety scoring |
 | Calm | 静穏 | Calming exercises |
 | Toolkit | 療法 | CBT/ACT tools |
 
-An **Options** button at the bottom of the home screen opens backup / wipe controls.
+An **Options** button below the tiles opens backup / wipe controls.
 
 ---
 
@@ -31,14 +31,14 @@ Hamilton Anxiety Rating Scale–style daily check-in. One record per calendar da
 | Behavioral | Intellectual, Insomnia, Behavior† |
 | Feelings | Anxious mood, Depressed mood, Fears† |
 
-†5 optional symptoms shown at 42% opacity; brighten to 80% once rated.
+†5 optional symptoms shown at reduced opacity; brighten once rated.
 
 **Scoring:** 0 / 1 / 2 / 3 = None / Mild / Moderate / Severe. Max total: 42.
 
 **Today sub-tab**
 - 14-dot colored snapshot (green → amber → orange → red by score)
 - Symptom cards grouped Physical / Behavioral / Feelings with colored left-accent bars
-- Free-text note field (auto-saves 600 ms after last keystroke)
+- Free-text note field (auto-saves shortly after last keystroke)
 - Rating taps save immediately
 
 **History sub-tab**
@@ -50,6 +50,8 @@ Hamilton Anxiety Rating Scale–style daily check-in. One record per calendar da
 **Settings sub-tab**
 - JSON backup / restore, full data export, data wipe
 
+**Home tile pill:** today's average score + label, count of symptoms rated, current streak.
+
 **Storage:** `nagi.hama.v1`
 
 ---
@@ -58,16 +60,16 @@ Hamilton Anxiety Rating Scale–style daily check-in. One record per calendar da
 
 Daily sleep-hygiene tracker. One record per calendar day; opens at the time range matching the current clock.
 
-**Four time ranges:**
+**Four time ranges (15 items total):**
 
 | Range | Window | Items |
 |---|---|---|
-| Morning | 6–8 am | 8 hours of sleep, consistent wake time |
-| Day | 8 am – 6 pm | Daylight, caffeine limit, nap limit |
-| Evening | 6–10 pm | No large meals, no intense exercise, no screens |
-| Night | 10 pm – 6 am | No activities in bed, good environment, ritual†, calming technique†, consistent early sleep |
+| Morning | 6–8 am | Total sleep >7.5 h · consistent wake time · wake up well rested |
+| Day | 8 am – 6 pm | Daylight exposure · no caffeine after 3 pm · no naps beyond a 20 min power nap |
+| Evening | 6–10 pm | No large meals 2 h before bed · no intense exercise 1 h before bed · no screens (except ebooks) 30 min before bed |
+| Night | 10 pm – 6 am | No activities in bed · dark, cool bedroom · ritual† · calming technique† · consistent sleep time · early sleep time |
 
-†Two "nice-to-have" Night items default unchecked; every other item defaults checked.
+†Two "nice-to-have" Night items; every other item defaults unchecked.
 
 **Checklist sub-tab**
 - Stepper UI — ‹ › arrows + 4-dot indicator walk the loop; current-time dot has a distinct ring
@@ -76,10 +78,10 @@ Daily sleep-hygiene tracker. One record per calendar day; opens at the time rang
 - Every tap saves immediately
 
 **History sub-tab**
-- One entry per day, newest first, with a 13-dot kept / not-kept summary
+- One entry per day, newest first, with a 15-dot kept / not-kept summary
 - Edit mode re-toggles any item grouped by range; delete with confirmation
 
-**Home tile** shows current range's kept count + a logged-days streak.
+**Home tile pills:** current range's accomplished count + a logged-days streak.
 
 **Storage:** `nagi.sleep.v1`
 
@@ -87,19 +89,19 @@ Daily sleep-hygiene tracker. One record per calendar day; opens at the time rang
 
 ## Calm
 
-Four exercises accessible from a landing card grid.
+Four exercises accessible from a landing card grid. A History sub-tab on the Calm screen lists saved narrations.
 
 ### Deep Breathing · 呼吸
 
-Two patterns: **4-7-8** (inhale 4s / hold 7s / exhale 8s) and **Box** (inhale 4s / hold 4s / exhale 4s / hold 4s). Animated SVG ring arcs through each phase; color shifts between inhale (blue) and exhale (green). Goal picker: finish by cycle count (1–30) or elapsed time (minutes).
+Two patterns: **4-7-8** (inhale 4 s / hold 7 s / exhale 8 s) and **Box** (inhale 4 s / hold 4 s / exhale 4 s / hold 4 s). Animated SVG ring arcs through each phase; color shifts between inhale and exhale. Goal picker: finish by cycle count or elapsed minutes.
 
 ### Grounding · 実感
 
 Three sub-modes selectable from a picker:
 
-- **Senses** — 5-4-3-2-1: guided through 5 things seen → 4 heard → 3 felt → 2 smelled → 1 tasted. Tap button counts off items; dot-progress strip tracks senses.
+- **Senses** — 5-4-3-2-1: guided through 5 things you see → 4 hear → 3 touch → 2 smell → 1 taste. Tap button counts off items; dot-progress strip tracks senses.
 - **Narration** — Open textarea; describe the current moment in third person, as if narrating a novel. Saved locally by date.
-- **Imagery** — Beach script reader: 4-paragraph guided visualization. Dot-progress strip shows current and completed paragraphs; Prev / Next / Done navigation.
+- **Imagery** — Beach script reader: 5-paragraph guided visualization. Dot-progress strip shows current and completed paragraphs; Back / Next / Done navigation.
 
 Narrations are stored in `nagi.calm.v1` and viewable in the Calm History tab.
 
@@ -117,55 +119,84 @@ Settings panel: toggle visibility per group; reorder shown groups with up/down a
 
 ## Toolkit
 
-Four CBT/ACT tools, each with a Japanese tag, a one-line cue, and a concrete example. No triage wizard — pick the tool that fits.
+Seven CBT/ACT tools on a flat landing grid. Each card shows a Japanese tag, a first-person cue, and a concrete example — no triage wizard, you pick the tool that fits.
 
 | Tool | Tag | When |
 |---|---|---|
-| Thought Check | 長考 | Spiraling on a negative thought; need to interrupt the loop or examine whether it's true |
-| Situation Debrief | 事態 | Something just happened (or is coming up); want to process it and figure out what to do |
-| Values Compass | 価値 | A wedge between how I'm living and what I value; want to articulate it |
-| Exposure Rewire | 構築 | Avoiding something because it's scary; want to face it in my own time |
+| Intrusion Check | 閃念 | A flash of negative thought intruded; want to step out of it |
+| Rumination Break | 反芻 | Stuck in a thought spiral; want to interrupt the loop |
+| Situation Processing | 事態 | Something happened that triggered you; want to process it |
+| Anticipation Planning | 予想 | Worrying about something coming up; want a plan |
+| Values Alignment | 価値 | A wedge between values and surroundings; want to realign |
+| Injustice Navigation | 公正 | Struck by an injustice event; want to navigate it |
+| Exposure Rewire | 構築 | Avoiding something scary; want to face it slowly |
 
-### Thought Check (長考)
+A History sub-tab lists saved records grouped by type, with inline edit and delete.
 
-Branch picker on entry: **Belief check** or **Rumination break**.
+### Intrusion Check (閃念) · 4 steps
 
-*Belief check (6 steps)*
-1. Facts — what happened, objectively
-2. Thoughts — the specific belief causing distress; optional "is this about yourself?" prompt unlocks a "what would you say to a friend?" step
-3. Emotion + intensity (1–10 slider)
-4. Evidence for the thought
-5. Evidence against — plus a side-drawer of cognitive distortion patterns (Reframing Cheatsheet) for reference
-6. Reinterpret — a more accurate reading; emotion re-rated (1–10)
+1. **Context** — how were you feeling before the thought appeared?
+2. **Intrusion** — what flashed through your mind? Is anything actually supporting the fear right now?
+3. **Gentle reminder** — static reframe ("an old protective alarm, not your true belief").
+4. **Return** — pick a redirect action (stretch, water, wash face, step outside, calming exercise).
 
-Optional save. Stored in `nagi.toolkit.thought.v1` with `branch: "belief"`.
+Stored in `nagi.toolkit.thought.v1` with `branch: "intrusion_check"`.
 
-*Rumination break (4 steps)*
-1. Name it — describe what's looping
-2. Body check — where do you feel it physically?
-3. Defusion prompt — static text anchoring the thought as mental noise
-4. Redirect — shortcut to the Calm section, or four physical action options
+### Rumination Break (反芻) · 4 steps
 
-Optional save. Stored in `nagi.toolkit.thought.v1` with `branch: "rumination"`.
+1. **Name it** — what's looping?
+2. **Symptoms** — pick from chip list (replaying loops, mental rehearsal, searching for closure, stalking online…) plus a free-text "other" and a "is new information emerging?" yes/no.
+3. **Acknowledge** — defusion message ("this is your mind doing what minds do").
+4. **Break the loop** — pick a redirect action.
 
-### Situation Debrief (事態)
+Stored in `nagi.toolkit.thought.v1` with `branch: "rumination"`.
 
-Branch picker on entry: **Past · process** or **Future · plan**.
+### Situation Processing (事態) · up to 8 steps
 
-*Past branch (7 steps)* — situation, immediate reaction, core thought, CBT check (is it accurate?), ACT check (what do you want to do regardless?), response severity triage, one concrete action.
+For something that already happened.
 
-*Future branch (6 steps)* — situation, what you're dreading, reality check (how likely / how bad?), ACT check, coping plan, one prep step.
+1. Situation — what happened.
+2. Immediate reaction — plus an optional "what is your reaction protecting you from?" sub-field.
+3. The thought — the belief driving the distress. If the belief is about yourself, an optional "what would you say to a friend?" prompt appears.
+4. CBT check — evidence for and against, with a side-drawer of cognitive distortion patterns (Reframing Cheatsheet) to collect reframe notes.
+5. Belief-check triage — done here, or "even if my belief were true…" continues.
+6. ACT check — what do you want to do, regardless?
+7. Severity triage — one-time situation vs. ongoing/serious.
+8. **Onetime branch:** one concrete action today. **Serious branch:** real-world levers (reduce exposure, document, support network, exit plan, seek support).
 
-Reframing Cheatsheet available in both branches. Optional save. Stored in `nagi.toolkit.situation.v1`.
+Stored in `nagi.toolkit.situation.v1` with `branch: "past"`.
 
-### Values Compass (価値)
+### Anticipation Planning (予想) · 6 steps
 
-1. Pick a domain — Work / Relationships / Health / Creative life / Other
-2. What kind of person do you want to be in this area?
-3. Is there a wedge between that and how you're living now? (free text)
-4. What's one thing you could do this week?
+For something coming up.
 
-Optional save. Stored in `nagi.toolkit.values.v1`.
+1. Situation — what's coming up.
+2. Immediate reaction — plus optional "what is this protecting you from?"
+3. The dread — specific feared outcome.
+4. Reality check — is it actually likely?
+5. ACT check / coping plan — if it happens, how will you handle it?
+6. Prep step — one concrete thing to do before it happens.
+
+Stored in `nagi.toolkit.situation.v1` with `branch: "future"`.
+
+### Values Alignment (価値) · 4 steps
+
+1. Domain — Work / Health / Friendship / Family, or custom.
+2. Identity — what kind of person you want to be in this area, and what that looks like day-to-day.
+3. Alignment — closeness slider (1–5: far off → aligned), framed as information, not a verdict.
+4. Action — pick "a small step can move it" (writes one concrete step) or "it feels bigger than that" (writes a sit-with-it reflection).
+
+Stored in `nagi.toolkit.values.v1` with `branch: "alignment"`.
+
+### Injustice Navigation (公正) · 5 steps
+
+1. Situation — what's the injustice event?
+2. Identity — what kind of person do you want to be in an unfair world?
+3. Meaning — what strengths did surviving this develop?
+4. Agency — what's in vs. out of your control right now?
+5. Action — given unfairness exists, what would wise self-care look like today?
+
+Stored in `nagi.toolkit.values.v1` with `branch: "injustice"`.
 
 ### Exposure Rewire (構築)
 
@@ -184,10 +215,6 @@ Pending exposures surface at the top of their theme with a *Resume* link. Once c
 
 **Storage:** `nagi.toolkit.exposure.v1`
 
-### Toolkit History
-
-The History sub-tab in the Toolkit screen shows all saved records (thought checks, rumination breaks, situation debriefs, values compass entries) grouped by type, with edit and delete.
-
 ---
 
 ## Storage
@@ -196,20 +223,20 @@ All data is on-device in `localStorage`. The backup nudge prompts periodically; 
 
 | Key | Contents |
 |---|---|
-| `nagi.meta.v1` | App metadata (nudge timing) |
+| `nagi.meta.v1` | App metadata (nudge timing, PMR settings) |
 | `nagi.hama.v1` | HAM-A daily history |
 | `nagi.sleep.v1` | Sleep checklist history |
 | `nagi.calm.v1` | Grounding narrations |
-| `nagi.toolkit.thought.v1` | Thought check + rumination records |
-| `nagi.toolkit.situation.v1` | Situation debrief records |
-| `nagi.toolkit.values.v1` | Values compass records |
+| `nagi.toolkit.thought.v1` | Intrusion checks + rumination breaks |
+| `nagi.toolkit.situation.v1` | Situation processing + anticipation planning records |
+| `nagi.toolkit.values.v1` | Values alignment + injustice navigation records |
 | `nagi.toolkit.exposure.v1` | Exposure rewire records |
 
 ---
 
 ## Tech
 
-- **Single file:** `index.html` (~5 400 lines, no framework, no build step)
+- **Single file:** `index.html` (~5 450 lines, no framework, no build step)
 - **Typography:** Fraunces variable serif · JetBrains Mono · Shippori Mincho
 - **Palette:** blue-grey base (`#E6ECF1`) with sky / slate / sage / amber / rose accents
 - **PWA:** `apple-mobile-web-app-capable`, viewport-fit cover, safe-area insets — installable on iOS via Add to Home Screen
