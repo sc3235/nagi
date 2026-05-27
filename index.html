@@ -74,6 +74,16 @@
     z-index: 10;
     backdrop-filter: blur(8px);
   }
+  #home-hero-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    margin-left: max(0px, calc((100vw - 560px) / 2 - 2px));
+  }
+  #home-hero-header .date-line { font-size: 13px; color: var(--ink-dim); margin-bottom: 2px; }
+  #home-hero-header .home-tagline { margin: 0; }
+  #home-hero-header .home-sub { margin: 0; }
   .brand {
     font-weight: 600;
     font-size: 22px;
@@ -1906,6 +1916,7 @@
 <header class="app-bar">
   <button class="back-btn hidden" id="back-btn">← home</button>
   <div class="brand" id="app-brand" style="display:none">Nagi<em>.</em></div>
+  <div id="home-hero-header" style="display:none"></div>
   <nav class="nav-tabs" id="nav-tabs" style="display:none">
     <button class="active" data-view="today">Today</button>
     <button data-view="history">History</button>
@@ -4478,12 +4489,12 @@ function renderHome() {
 
   const phaseDelays = ['0.00s', '0.06s', '0.12s', '0.18s'];
 
+  document.getElementById('home-hero-header').innerHTML = `
+    <div class="date-line">${dateStr}</div>
+    <h1 class="home-tagline">Impermanence.</h1>
+    <p class="home-sub"><em>Nothing spans all time or space.</em></p>`;
+
   container.innerHTML = `
-    <div class="home-hero">
-      <div class="date-line">${dateStr}</div>
-      <h1 class="home-tagline">Impermanence.</h1>
-      <p class="home-sub"><em>Nothing spans all time or space.</em></p>
-    </div>
     <div class="tc-cards">
       ${PHASES.map((p, i) => {
         const pills = p.num === 1 ? sleepPills : p.num === 2 ? hamPills : '';
@@ -4757,16 +4768,19 @@ function showScreen(name) {
   const activeCalmToolsEl   = document.getElementById('calm-tabs');
   const tkTabsEl     = document.getElementById('toolkit-tabs');
   const brand     = document.getElementById('app-brand');
+  const homeHeroHeader = document.getElementById('home-hero-header');
 
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   sleepTabs.style.display  = 'none';
   activeCalmToolsEl.style.display = 'none';
   tkTabsEl.style.display   = 'none';
+  homeHeroHeader.style.display = 'none';
 
   if (name === 'home') {
     document.getElementById('view-home').classList.add('active');
     backBtn.classList.add('hidden');
-    brand.style.display = '';
+    brand.style.display = 'none';
+    homeHeroHeader.style.display = '';
     navTabs.style.display = 'none';
     renderHome();
   } else if (name === 'hama') {
