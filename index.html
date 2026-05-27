@@ -880,10 +880,10 @@
   .pmr-reorder-btn:disabled { opacity: 0.2; cursor: default; }
 
   /* Start button color variants */
-  .clr-mid-btn     { background: var(--sky)    !important; }
-  .clr-good-btn    { background: var(--slate) !important; }
-  .clr-low-btn     { background: var(--amber)          !important; }
-  .clr-imagery-btn { background: var(--slate) !important; }
+  .clr-sky-btn     { background: var(--sky)    !important; }
+  .clr-slate-btn   { background: var(--slate)  !important; }
+  .clr-amber-btn   { background: var(--amber)  !important; }
+  .clr-matcha-btn  { background: var(--matcha) !important; }
 
   /* Grounding */
   .grd-sense-prompt {
@@ -1049,6 +1049,7 @@
   .wt-progress-dots {
     display: flex; gap: 7px; align-items: center;
   }
+  .wt-progress-count { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
   .wt-dot {
     width: 9px; height: 9px; border-radius: 50%;
     background: var(--bg-card); border: 1.5px solid var(--line);
@@ -1804,11 +1805,6 @@
     flex-shrink: 0;
   }
   .tk-discard-btn:active { background: var(--bg-card); }
-  .tk-intensity-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-  .tk-intensity-val {
-    font-family: var(--mono); font-size: 22px; font-weight: 500;
-    color: var(--ink); min-width: 40px; text-align: right;
-  }
 
   .date-line-center { text-align: center; }
   #sleep-panel { padding-top: 80px; }
@@ -1990,6 +1986,8 @@ const SYMPTOMS = [
 // Per-button labels shown in rate rows (indexed 0-3). severityLabel() maps an avg score to a different vocabulary.
 const SCORE_LABELS = ['none', 'mild', 'mod', 'severe'];
 const BACKUP_INTERVAL_DAYS = 7;
+const PMR_TENSE_DEFAULT = 3;
+const PMR_RELAX_DEFAULT = 10;
 
 const META_KEY         = 'nagi.meta.v1';
 const HAMA_KEY         = 'nagi.hama.v1';
@@ -2203,46 +2201,43 @@ const SLEEP_RANGES = [
 const SLEEP_ITEM_COUNT = SLEEP_RANGES.reduce((n, r) => n + r.items.length, 0);
 
 // ---------- Stores ----------
-let metaStore  = { lastBackup: null, nudgeDismissedUntil: null, pmrShown: {}, pmrOrder: [], pmrTenseSec: 3, pmrRelaxSec: 10 };
-let hamaStore  = { history: {} };
-let calmStore  = { narrations: {} };
-let sleepStore = { history: {} };
+let metaStore, hamaStore, calmStore, sleepStore;
 
 let sleepState = { tab: 'today', rangeIdx: 0, dayOffset: 0, editId: null };
 
 // ---------- Load / Persist ----------
-function loadMeta() {
-  try { const r = localStorage.getItem(META_KEY); if (r) metaStore = { ...metaStore, ...JSON.parse(r) }; }
-  catch(e) { console.error('Meta load failed:', e); }
+const STORAGE_FULL_MSG = 'Could not save. Your browser storage may be full.';
+function makeStore(key, defaults, name) {
+  return {
+    load: () => {
+      try { const r = localStorage.getItem(key); if (r) return { ...defaults, ...JSON.parse(r) }; }
+      catch(e) { console.error(`${name} load failed:`, e); }
+      return { ...defaults };
+    },
+    persist: (store) => {
+      try { localStorage.setItem(key, JSON.stringify(store)); }
+      catch(e) { console.error(`${name} save failed:`, e); alert(STORAGE_FULL_MSG); }
+    },
+  };
 }
-function persistMeta() {
-  try { localStorage.setItem(META_KEY, JSON.stringify(metaStore)); }
-  catch(e) { console.error('Meta save failed:', e); alert('Could not save. Your browser storage may be full.'); }
-}
-function loadHama() {
-  try { const r = localStorage.getItem(HAMA_KEY); if (r) hamaStore = { history: {}, ...JSON.parse(r) }; }
-  catch(e) { console.error('HAMA load failed:', e); }
-}
-function persistHama() {
-  try { localStorage.setItem(HAMA_KEY, JSON.stringify(hamaStore)); }
-  catch(e) { console.error('HAMA save failed:', e); alert('Could not save. Your browser storage may be full.'); }
-}
-function loadCalm() {
-  try { const r = localStorage.getItem(CALM_KEY); if (r) calmStore = { narrations: {}, ...JSON.parse(r) }; }
-  catch(e) { console.error('Calm load failed:', e); }
-}
-function persistCalm() {
-  try { localStorage.setItem(CALM_KEY, JSON.stringify(calmStore)); }
-  catch(e) { console.error('Calm save failed:', e); alert('Could not save. Your browser storage may be full.'); }
-}
-function loadSleep() {
-  try { const r = localStorage.getItem(SLEEP_KEY); if (r) sleepStore = { history: {}, ...JSON.parse(r) }; }
-  catch(e) { console.error('Sleep load failed:', e); }
-}
-function persistSleep() {
-  try { localStorage.setItem(SLEEP_KEY, JSON.stringify(sleepStore)); }
-  catch(e) { console.error('Sleep save failed:', e); alert('Could not save. Your browser storage may be full.'); }
-}
+const META_STORE_DEFAULTS  = { lastBackup: null, nudgeDismissedUntil: null, pmrShown: {}, pmrOrder: [], pmrTenseSec: PMR_TENSE_DEFAULT, pmrRelaxSec: PMR_RELAX_DEFAULT };
+const HAMA_STORE_DEFAULTS  = { history: {} };
+const CALM_STORE_DEFAULTS  = { narrations: {} };
+const SLEEP_STORE_DEFAULTS = { history: {} };
+
+const _meta  = makeStore(META_KEY,  META_STORE_DEFAULTS,  'Meta');
+const _hama  = makeStore(HAMA_KEY,  HAMA_STORE_DEFAULTS,  'HAMA');
+const _calm  = makeStore(CALM_KEY,  CALM_STORE_DEFAULTS,  'Calm');
+const _sleep = makeStore(SLEEP_KEY, SLEEP_STORE_DEFAULTS, 'Sleep');
+
+function loadMeta()     { metaStore  = _meta.load(); }
+function persistMeta()  { _meta.persist(metaStore); }
+function loadHama()     { hamaStore  = _hama.load(); }
+function persistHama()  { _hama.persist(hamaStore); }
+function loadCalm()     { calmStore  = _calm.load(); }
+function persistCalm()  { _calm.persist(calmStore); }
+function loadSleep()    { sleepStore = _sleep.load(); }
+function persistSleep() { _sleep.persist(sleepStore); }
 function loadTkThought()       { try { return JSON.parse(localStorage.getItem(TK_THOUGHT_KEY)   || '[]'); } catch(e){ return []; } }
 function saveTkThought(arr)    { try { localStorage.setItem(TK_THOUGHT_KEY,   JSON.stringify(arr)); } catch(e){} }
 (function(){ const clean = loadTkThought().filter(r => r.branch !== 'belief'); saveTkThought(clean); })();
@@ -2300,6 +2295,12 @@ function severityClass(avg) {
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+const cardAnimDelay = i => `${(i * 0.06).toFixed(2)}s`;
+const scrollTopSoon = () => requestAnimationFrame(() => {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+});
 
 // ---------- HAMA helpers ----------
 function getTodayEntry() {
@@ -2655,10 +2656,7 @@ function renderSettings() {
     if (!confirm("Really sure? Export a backup first if you might want this data later.")) return;
     [META_KEY, HAMA_KEY, SLEEP_KEY, CALM_KEY, TK_THOUGHT_KEY, TK_SITUATION_KEY, TK_VALUES_KEY, TK_EXPOSURE_KEY]
       .forEach(k => localStorage.removeItem(k));
-    metaStore  = { lastBackup: null, nudgeDismissedUntil: null, pmrShown: {}, pmrOrder: [], pmrTenseSec: 3, pmrRelaxSec: 10 };
-    hamaStore  = { history: {} };
-    sleepStore = { history: {} };
-    calmStore  = { narrations: {} };
+    loadMeta(); loadHama(); loadSleep(); loadCalm();
     renderSettings(); showSaved('wiped');
   });
 }
@@ -2719,6 +2717,17 @@ function tkBackToLanding() {
   wtState.activeActionTool = null;
   wtState.draft = {};
   renderWorkthrough();
+}
+
+function wtProgressHeader(cur, total, label) {
+  const dots = Array.from({ length: total }, (_, i) => {
+    const n = i + 1;
+    return `<span class="wt-dot ${n === cur ? 'active' : n < cur ? 'done' : ''}"></span>`;
+  }).join('');
+  return `<div class="wt-progress-row">
+    <div class="wt-progress-dots">${dots}</div>
+    <span class="wt-progress-count">${cur}/${total}</span>
+  </div>${label ? `<div class="wt-step-label">${escapeHtml(label)}</div>` : ''}`;
 }
 
 const TK_CATALOGUE = [
@@ -2783,7 +2792,7 @@ const TK_CATALOGUE = [
 function renderWorkthrough() {
   const container = document.getElementById('workthrough-content');
   if (!container) return;
-  requestAnimationFrame(() => { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; });
+  scrollTopSoon();
   const tkTabsEl = document.getElementById('toolkit-tabs');
 
   if (wtState.step === 0) {
@@ -2805,9 +2814,8 @@ function renderWorkthrough() {
 }
 
 function renderWTLanding(container) {
-  const delays = ['0.00s', '0.06s', '0.12s', '0.18s', '0.24s', '0.30s', '0.36s'];
   const entriesHtml = TK_CATALOGUE.map((t, i) => `
-    <button class="tc-card tc-card--${t.variant}" data-tool="${t.id}" style="animation-delay:${delays[i]}">
+    <button class="tc-card tc-card--${t.variant}" data-tool="${t.id}" style="animation-delay:${cardAnimDelay(i)}">
       <div class="tc-card-body">
         <span class="tc-tag">${escapeHtml(t.tag)}</span>
         <div class="tc-card-title">${escapeHtml(t.name)}</div>
@@ -2878,18 +2886,9 @@ function expFmtDate(ts) {
 function expProgressRow(step) {
   const build = { situation: 1, fear: 2, values: 3 };
   const log   = { outcome: 1, survived: 2 };
-  let cur, total;
-  if (build[step])    { cur = build[step]; total = 3; }
-  else if (log[step]) { cur = log[step];   total = 2; }
-  else return '';
-  const dots = Array.from({ length: total }, (_, i) => {
-    const n = i + 1;
-    return `<span class="wt-dot ${n === cur ? 'active' : n < cur ? 'done' : ''}"></span>`;
-  }).join('');
-  return `<div class="wt-progress-row">
-    <div class="wt-progress-dots">${dots}</div>
-    <span style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">${cur}/${total}</span>
-  </div>`;
+  if (build[step])    return wtProgressHeader(build[step], 3);
+  if (log[step])      return wtProgressHeader(log[step],   2);
+  return '';
 }
 function expValuesWarnHtml(text) {
   const looksLikeReduction = /anxi|nervous|less scared|less afraid|calm down|\brelax|feel better|stop feeling|feel less|feel calm/i.test(text || '');
@@ -3160,6 +3159,9 @@ function openReframeCheatsheet(onPick) {
   });
 }
 
+const TK_REDIRECTS = ['Stand up and stretch', 'Get a glass of water', 'Wash your face', 'Step outside for a minute', 'Do a calming exercise (home → calm)'];
+const TK_DOMAINS   = ['Work', 'Health', 'Friendship', 'Family'];
+
 function renderToolThoughtRecord(panel) {
   const s = wtState.draft._tc || {
     branch: null,
@@ -3179,18 +3181,7 @@ function renderToolThoughtRecord(panel) {
   if (s.intAction === undefined)      s.intAction = '';
   panel.dataset.branch = s.branch || '';
 
-  const header = (cur, total, label) => {
-    const dots = Array.from({ length: total }, (_, i) => {
-      const n = i + 1;
-      return `<span class="wt-dot ${n === cur ? 'active' : n < cur ? 'done' : ''}"></span>`;
-    }).join('');
-    return `
-      <div class="wt-progress-row">
-        <div class="wt-progress-dots">${dots}</div>
-        <span style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">${cur}/${total}</span>
-      </div>
-      <div class="wt-step-label">${escapeHtml(label)}</div>`;
-  };
+  const header = wtProgressHeader;
 
   if (s.branch === 'rumination') {
     const RUM_TOTAL = 4;
@@ -3262,12 +3253,11 @@ function renderToolThoughtRecord(panel) {
       panel.querySelector('#rb-prev').addEventListener('click', () => { s.rumStep = 2; renderWorkthrough(); });
       return;
     }
-    const REDIRECTS = ['Stand up and stretch', 'Get a glass of water', 'Wash your face', 'Step outside for a minute', 'Do a calming exercise (home → calm)'];
     panel.innerHTML = `
       ${header(4, RUM_TOTAL, 'Break the loop')}
       <div class="wt-step-heading">Pick one thing to do right now:</div>
       <div class="tk-redirect-options">
-        ${REDIRECTS.map(a => `<button class="tk-redirect-btn" data-action="${escapeHtml(a)}">${escapeHtml(a)}</button>`).join('')}
+        ${TK_REDIRECTS.map(a => `<button class="tk-redirect-btn" data-action="${escapeHtml(a)}">${escapeHtml(a)}</button>`).join('')}
       </div>
       <button class="wt-back-btn" id="rb-prev" style="margin-top:14px">← back</button>
     `;
@@ -3339,12 +3329,11 @@ function renderToolThoughtRecord(panel) {
       return;
     }
 
-    const REDIRECTS = ['Stand up and stretch', 'Get a glass of water', 'Wash your face', 'Step outside for a minute', 'Do a calming exercise (home → calm)'];
     panel.innerHTML = `
       ${header(4, INT_TOTAL, 'Return')}
       <div class="wt-step-heading">Pick one thing to do right now:</div>
       <div class="tk-redirect-options">
-        ${REDIRECTS.map(a => `<button class="tk-redirect-btn" data-action="${escapeHtml(a)}">${escapeHtml(a)}</button>`).join('')}
+        ${TK_REDIRECTS.map(a => `<button class="tk-redirect-btn" data-action="${escapeHtml(a)}">${escapeHtml(a)}</button>`).join('')}
       </div>
       <button class="wt-back-btn" id="int-prev" style="margin-top:14px">← back</button>
     `;
@@ -3400,16 +3389,7 @@ function renderToolThoughtWorkthrough(panel) {
   panel.dataset.branch = s.branch || '';
 
   const total = (s.branch === 'past') ? 8 : 6;
-  const dotsHtml = Array.from({ length: total }, (_, i) => {
-    const n = i + 1;
-    return `<span class="wt-dot ${n === s.step ? 'active' : n < s.step ? 'done' : ''}"></span>`;
-  }).join('');
-  const header = (label) => `
-    <div class="wt-progress-row">
-      <div class="wt-progress-dots">${dotsHtml}</div>
-      <span style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">${s.step}/${total}</span>
-    </div>
-    <div class="wt-step-label">${escapeHtml(label)}</div>`;
+  const header = (label) => wtProgressHeader(s.step, total, label);
 
   const LEVERS = [
     { key: 'reduce',   label: 'Reduce exposure', prompt: 'Is there a way to limit your contact with this situation while you figure out next steps?',
@@ -3686,7 +3666,7 @@ function renderToolThoughtWorkthrough(panel) {
 }
 
 function renderToolValuesCheck(panel) {
-  const DOMAINS = ['Work', 'Health', 'Friendship', 'Family'];
+  const DOMAINS = TK_DOMAINS;
   const s = wtState.draft._vc || { branch: null, step: 1, domain: '', personStatement: '', closeness: 3, action: '', sizeChoice: null };
   wtState.draft._vc = s;
   if (s.branch === undefined) s.branch = null;
@@ -3700,15 +3680,7 @@ function renderToolValuesCheck(panel) {
     if (s.injAction    === undefined) s.injAction    = '';
 
     const IJ_TOTAL = 5;
-    const ijHeader = (cur, label) => `
-      <div class="wt-progress-row">
-        <div class="wt-progress-dots">${Array.from({ length: IJ_TOTAL }, (_, i) => {
-          const n = i + 1;
-          return `<span class="wt-dot ${n === cur ? 'active' : n < cur ? 'done' : ''}"></span>`;
-        }).join('')}</div>
-        <span style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">${cur}/${IJ_TOTAL}</span>
-      </div>
-      <div class="wt-step-label">${escapeHtml(label)}</div>`;
+    const ijHeader = (cur, label) => wtProgressHeader(cur, IJ_TOTAL, label);
 
     const injSaveRecord = () => {
       tkSaveRecord('values_compass', {
@@ -3807,15 +3779,7 @@ function renderToolValuesCheck(panel) {
   };
 
   const VC_TOTAL = 4;
-  const vcHeader = (cur, label) => `
-    <div class="wt-progress-row">
-      <div class="wt-progress-dots">${Array.from({ length: VC_TOTAL }, (_, i) => {
-        const n = i + 1;
-        return `<span class="wt-dot ${n === cur ? 'active' : n < cur ? 'done' : ''}"></span>`;
-      }).join('')}</div>
-      <span style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">${cur}/${VC_TOTAL}</span>
-    </div>
-    <div class="wt-step-label">${escapeHtml(label)}</div>`;
+  const vcHeader = (cur, label) => wtProgressHeader(cur, VC_TOTAL, label);
 
   if (s.step === 1) {
     const isCustom = s.domain && !DOMAINS.includes(s.domain);
@@ -4042,9 +4006,8 @@ function tkRenderHistField(cfg, d, id, store) {
     return `${label}<div class="tk-hist-chip-row">${chips}</div>`;
   }
   if (cfg.type === 'domain') {
-    const HIST_DOMAINS = ['Work', 'Health', 'Friendship', 'Family', 'Other'];
-    const isCustom = val && !HIST_DOMAINS.includes(val);
-    const chips = HIST_DOMAINS.map(dom =>
+    const isCustom = val && !TK_DOMAINS.includes(val);
+    const chips = TK_DOMAINS.map(dom =>
       `<button class="wt-chip ${val===dom?'selected':''}" ${attrs} data-tkval="${escapeHtml(dom)}" data-tkdomchip="">${escapeHtml(dom)}</button>`
     ).join('');
     return `${label}<div class="tk-hist-field-group">
@@ -4068,50 +4031,10 @@ function tkHistRecActions(id, store) {
   </div>`;
 }
 
-function tkHistRumHtml(r) {
-  const fields = TK_HIST_FIELD_CONFIG.rumination.map(cfg => tkRenderHistField(cfg, r.data, r.id, 'rumination')).join('');
+function tkHistRecHtml(r, cfgKey, storeKey) {
+  const fields = TK_HIST_FIELD_CONFIG[cfgKey].map(cfg => tkRenderHistField(cfg, r.data, r.id, storeKey)).join('');
   return `<div class="tk-hist-rec">
-    <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, 'rumination')}</div>
-    ${fields}
-  </div>`;
-}
-
-function tkHistIntrusionHtml(r) {
-  const fields = TK_HIST_FIELD_CONFIG.intrusion_check.map(cfg => tkRenderHistField(cfg, r.data, r.id, 'intrusion_check')).join('');
-  return `<div class="tk-hist-rec">
-    <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, 'intrusion_check')}</div>
-    ${fields}
-  </div>`;
-}
-
-function tkHistPastHtml(r) {
-  const fields = TK_HIST_FIELD_CONFIG.past.map(cfg => tkRenderHistField(cfg, r.data, r.id, 'past')).join('');
-  return `<div class="tk-hist-rec">
-    <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, 'past')}</div>
-    ${fields}
-  </div>`;
-}
-
-function tkHistFutureHtml(r) {
-  const fields = TK_HIST_FIELD_CONFIG.future.map(cfg => tkRenderHistField(cfg, r.data, r.id, 'future')).join('');
-  return `<div class="tk-hist-rec">
-    <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, 'future')}</div>
-    ${fields}
-  </div>`;
-}
-
-function tkHistValuesHtml(r) {
-  const fields = TK_HIST_FIELD_CONFIG.values.map(cfg => tkRenderHistField(cfg, r.data, r.id, 'values')).join('');
-  return `<div class="tk-hist-rec">
-    <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, 'values')}</div>
-    ${fields}
-  </div>`;
-}
-
-function tkHistInjusticeHtml(r) {
-  const fields = TK_HIST_FIELD_CONFIG.injustice.map(cfg => tkRenderHistField(cfg, r.data, r.id, 'values')).join('');
-  return `<div class="tk-hist-rec">
-    <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, 'values')}</div>
+    <div class="tk-hist-rec-head"><span class="tk-hist-rec-date">${tkFmtTs(r.ts)}</span>${tkHistRecActions(r.id, storeKey)}</div>
     ${fields}
   </div>`;
 }
@@ -4217,7 +4140,7 @@ function renderTkHistory(container) {
   const isEmpty = !rumRecs.length && !intrusionRecs.length && !pastRecs.length && !futureRecs.length && !valuesRecs.length && !injusticeRecs.length && !exposures.length;
   if (isEmpty) {
     container.innerHTML = `
-      <div class="date-line" style="text-align:center">Toolkit</div>
+      <div class="date-line date-line-center">Toolkit</div>
       <h1 class="greeting">History<em>.</em></h1>
       <div class="empty">No records yet.</div>
     `;
@@ -4225,20 +4148,20 @@ function renderTkHistory(container) {
   }
 
   const sections = [
-    { key: 'rumination',     label: 'Thought · Rumination',       recs: rumRecs,       fn: tkHistRumHtml      },
-    { key: 'intrusion_check', label: 'Thought · Intrusion Check', recs: intrusionRecs, fn: tkHistIntrusionHtml },
-    { key: 'past',       label: 'Situation · Past',           recs: pastRecs,      fn: tkHistPastHtml     },
-    { key: 'future',     label: 'Situation · Future',         recs: futureRecs,    fn: tkHistFutureHtml   },
-    { key: 'values',     label: 'Values · Alignment',         recs: valuesRecs,    fn: tkHistValuesHtml   },
-    { key: 'injustice',  label: 'Values · Injustice',         recs: injusticeRecs, fn: tkHistInjusticeHtml},
-    { key: 'exposure',   label: 'Exposure',                   recs: exposures,     fn: null               },
+    { key: 'rumination',      label: 'Thought · Rumination',      recs: rumRecs,       cfg: 'rumination',      store: 'rumination'      },
+    { key: 'intrusion_check', label: 'Thought · Intrusion Check', recs: intrusionRecs, cfg: 'intrusion_check', store: 'intrusion_check' },
+    { key: 'past',            label: 'Situation · Past',          recs: pastRecs,      cfg: 'past',            store: 'past'            },
+    { key: 'future',          label: 'Situation · Future',        recs: futureRecs,    cfg: 'future',          store: 'future'          },
+    { key: 'values',          label: 'Values · Alignment',        recs: valuesRecs,    cfg: 'values',          store: 'values'          },
+    { key: 'injustice',       label: 'Values · Injustice',        recs: injusticeRecs, cfg: 'injustice',       store: 'values'          },
+    { key: 'exposure',        label: 'Exposure',                  recs: exposures,     cfg: null,              store: null              },
   ];
 
   const sectionsHtml = sections.filter(s => s.recs.length).map(s => {
     const open = !tkHistClosedSecs.has(s.key);
     const inner = s.key === 'exposure'
       ? tkHistExposureHtml(exposures)
-      : s.recs.map(r => s.fn(r)).join('');
+      : s.recs.map(r => tkHistRecHtml(r, s.cfg, s.store)).join('');
     return `
       <details class="tk-hist-section" data-sec="${s.key}" ${open ? 'open' : ''}>
         <summary class="tk-hist-summary">
@@ -4250,7 +4173,7 @@ function renderTkHistory(container) {
   }).join('');
 
   container.innerHTML = `
-    <div class="date-line" style="text-align:center">Toolkit</div>
+    <div class="date-line date-line-center">Toolkit</div>
     <h1 class="greeting">History<em>.</em></h1>
     ${sectionsHtml}
   `;
@@ -4410,7 +4333,7 @@ function renderCalmHistory(container) {
 
   if (!entries.length) {
     container.innerHTML = `
-      <div class="date-line" style="text-align:center">Calm</div>
+      <div class="date-line date-line-center">Calm</div>
       <h1 class="greeting">History<em>.</em></h1>
       <div class="empty">No records yet.</div>
     `;
@@ -4431,7 +4354,7 @@ function renderCalmHistory(container) {
   ).join('');
 
   container.innerHTML = `
-    <div class="date-line" style="text-align:center">Calm</div>
+    <div class="date-line date-line-center">Calm</div>
     <h1 class="greeting">History<em>.</em></h1>
     <details class="tk-hist-section" open>
       <summary class="tk-hist-summary">
@@ -4488,8 +4411,6 @@ function renderHome() {
     <span class="score-pill">${sleepRange.name.toLowerCase()} · ${sleepRangeMet}/${sleepRange.items.length} accomplished</span>
     <span class="score-pill">${sleepStreakN} day${sleepStreakN !== 1 ? 's' : ''} streak</span>`;
 
-  const phaseDelays = ['0.00s', '0.06s', '0.12s', '0.18s'];
-
   document.getElementById('home-hero-header').innerHTML = `
     <div class="date-line">${dateStr}</div>
     <h1 class="home-tagline">Impermanence.</h1>
@@ -4500,7 +4421,7 @@ function renderHome() {
       ${PHASES.map((p, i) => {
         const pills = p.num === 1 ? sleepPills : p.num === 2 ? hamPills : '';
         return `
-        <button class="tc-card tc-card--${p.variant}" data-phase="${p.num}" style="animation-delay:${phaseDelays[i]}">
+        <button class="tc-card tc-card--${p.variant}" data-phase="${p.num}" style="animation-delay:${cardAnimDelay(i)}">
           <div class="tc-card-body">
             <span class="tc-tag">${p.tag}</span>
             <div class="tc-card-title">${p.name}</div>
@@ -4682,7 +4603,7 @@ function renderSleepHistory() {
     return;
   }
   panel.innerHTML = `
-    <div class="date-line" style="text-align:center">Sleep</div>
+    <div class="date-line date-line-center">Sleep</div>
     <h1 class="greeting" style="text-align:center">History<em>.</em></h1>
     ${keys.map(sleepHistoryEntryHtml).join('')}`;
 
@@ -4825,7 +4746,7 @@ function showScreen(name) {
     document.querySelector('#sleep-tabs button[data-stab="today"]').classList.add('active');
     renderSleep();
   }
-  requestAnimationFrame(() => { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; });
+  scrollTopSoon();
 }
 
 // ---------- Back button ----------
@@ -4859,7 +4780,7 @@ document.querySelectorAll('#nav-tabs button').forEach(btn => {
     document.getElementById(`view-${view}`).classList.add('active');
     if (view === 'today')   renderToday();
     if (view === 'history') renderHistory();
-    requestAnimationFrame(() => { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; });
+    scrollTopSoon();
   });
 });
 
@@ -4995,12 +4916,11 @@ function renderCalm() {
     }
 
     // Main tab landing
-    const delays = ['0.00s', '0.06s', '0.12s', '0.18s'];
     container.innerHTML = `
       <h1 class="greeting" style="margin-top:60px">What would you like to do<em>?</em></h1>
       <div class="tc-cards">
         ${CALM_CARDS.map((c, i) => `
-          <button class="tc-card tc-card--${c.variant}" data-tab="${c.tab}" style="animation-delay:${delays[i]}">
+          <button class="tc-card tc-card--${c.variant}" data-tab="${c.tab}" style="animation-delay:${cardAnimDelay(i)}">
             <div class="tc-card-body">
               <span class="tc-tag">${c.tag}</span>
               <div class="tc-card-title">${c.name}</div>
@@ -5084,7 +5004,7 @@ function renderBreathing() {
         <button class="calm-pick-btn ${breathState.goalType==='timer'?'active':''}" data-goal="timer">Timer</button>
       </div>
       ${goalWidget}
-      <button class="calm-start-btn clr-mid-btn" id="breath-start">Begin</button>
+      <button class="calm-start-btn clr-sky-btn" id="breath-start">Begin</button>
     `;
     panel.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { breathState.mode = b.dataset.mode; renderBreathing(); }));
     panel.querySelectorAll('[data-goal]').forEach(b => b.addEventListener('click', () => { breathState.goalType = b.dataset.goal; breathState.goalValue = 3; renderBreathing(); }));
@@ -5175,14 +5095,14 @@ function renderGrounding() {
     let subBody = '';
     if (sub === 'fivesenses') {
       subBody = `<p class="calm-sub">Work through 5→4→3→2→1: things you see, hear, touch, smell, and taste.</p>
-                 <button class="calm-start-btn clr-good-btn" id="grd-start">Begin</button>`;
+                 <button class="calm-start-btn clr-slate-btn" id="grd-start">Begin</button>`;
     } else if (sub === 'narration') {
       subBody = `<p class="calm-sub">Describe your current moment in third person, as if narrating a novel. Saved locally by date.</p>
-                 <button class="calm-start-btn" id="grd-start" style="background:var(--slate)">Begin</button>
+                 <button class="calm-start-btn clr-slate-btn" id="grd-start">Begin</button>
                  <button class="calm-pick-btn" id="grd-hist-link" style="margin-top:12px;width:100%">View past narrations →</button>`;
     } else {
       subBody = `<p class="calm-sub">Find a comfortable, quiet position. As you read each passage, engage all your senses — see, hear, smell, and feel the scene in your mind.</p>
-                 <button class="calm-start-btn clr-imagery-btn" id="grd-start">Begin</button>`;
+                 <button class="calm-start-btn clr-slate-btn" id="grd-start">Begin</button>`;
     }
     panel.innerHTML = `
       <div class="calm-heading">Grounding</div>
@@ -5252,7 +5172,7 @@ function renderGrounding() {
       <p class="calm-sub">Describe your current moment in third person, as if you are a narrator in a novel. Observe every detail without judgment.</p>
       <textarea class="grd-narration" id="grd-narration" placeholder="She sat by the window, noticing the weight of the afternoon light across her hands…">${escapeHtml(groundingState.narration)}</textarea>
       <div class="tk-save-row">
-        <button class="wt-primary-btn" id="grd-narr-save" style="background:var(--slate);margin-bottom:0">Save</button>
+        <button class="wt-primary-btn clr-slate-btn" id="grd-narr-save" style="margin-bottom:0">Save</button>
         <button class="tk-discard-btn" id="grd-narr-done">Skip</button>
       </div>
     `;
@@ -5309,7 +5229,7 @@ function renderTea() {
       <p class="calm-sub">Thoughts and feelings are visitors. They arrive uninvited, they're not always welcome, but they don't have to run the house.</p>
       <div class="calm-picker-label">What's visiting right now?</div>
       <input type="text" class="tea-input" id="tea-word" placeholder="anxiety, dread, shame, restlessness, ..." value="${escapeHtml(teaState.word)}" autocomplete="off" />
-      <button class="calm-start-btn" id="tea-begin" style="background:var(--matcha);margin-top:16px">Begin</button>
+      <button class="calm-start-btn clr-matcha-btn" id="tea-begin" style="margin-top:16px">Begin</button>
     `;
     const input = document.getElementById('tea-word');
     input.addEventListener('input', e => { teaState.word = e.target.value; });
@@ -5351,7 +5271,7 @@ function renderTea() {
     panel.innerHTML = `
       <div class="calm-heading" style="margin-top:40px">&nbsp;</div>
       <p class="tea-body" style="font-size:17px;line-height:1.7;font-family:var(--serif);color:var(--sage)">It came. You sat with it. It doesn't have to leave for you to be okay.</p>
-      <button class="calm-start-btn" id="tea-done" style="background:var(--matcha);margin-top:24px">Done</button>
+      <button class="calm-start-btn clr-matcha-btn" id="tea-done" style="margin-top:24px">Done</button>
     `;
     document.getElementById('tea-done').addEventListener('click', () => {
       teaState.mode = 'idle';
@@ -5417,7 +5337,7 @@ function renderPmr() {
     const group = shownGroups[pmrState.stepIdx];
     if (!group) { pmrState.mode = 'idle'; renderPmr(); return; }
     const isRelease = pmrState.phase === 'release';
-    const total = isRelease ? (metaStore.pmrRelaxSec || 10) : (metaStore.pmrTenseSec || 3);
+    const total = isRelease ? (metaStore.pmrRelaxSec || PMR_RELAX_DEFAULT) : (metaStore.pmrTenseSec || PMR_TENSE_DEFAULT);
     const progress = (total - pmrState.phaseRemaining) / total;
     panel.innerHTML = `
       <div class="pmr-step-info">${pmrState.stepIdx+1} / ${shownGroups.length} · ${escapeHtml(group.name)}</div>
@@ -5443,8 +5363,8 @@ function renderPmr() {
 
   // Idle
   const shownGroups = getShownGroups();
-  const tenseSec = metaStore.pmrTenseSec || 3;
-  const relaxSec = metaStore.pmrRelaxSec || 10;
+  const tenseSec = metaStore.pmrTenseSec || PMR_TENSE_DEFAULT;
+  const relaxSec = metaStore.pmrRelaxSec || PMR_RELAX_DEFAULT;
   panel.innerHTML = `
     <div class="calm-heading">Progressive Muscle Relaxation</div>
     <p class="calm-sub">Tense each muscle group, then release and observe the contrast. Adjust durations below.</p>
@@ -5468,7 +5388,7 @@ function renderPmr() {
     </div>
     <div class="calm-bottom-row">
       <button class="calm-pick-btn" id="pmr-customize">Customize</button>
-      <button class="calm-start-btn clr-low-btn" id="pmr-start">Begin (${shownGroups.length} groups)</button>
+      <button class="calm-start-btn clr-amber-btn" id="pmr-start">Begin (${shownGroups.length} groups)</button>
     </div>
   `;
   panel.querySelector('#pmr-tense-slider').addEventListener('input', e => {
@@ -5485,15 +5405,15 @@ function renderPmr() {
   panel.querySelector('#pmr-start').addEventListener('click', () => {
     if (!shownGroups.length) return;
     pmrState.mode = 'session'; pmrState.stepIdx = 0;
-    pmrState.phase = 'tense'; pmrState.phaseRemaining = metaStore.pmrTenseSec || 3;
+    pmrState.phase = 'tense'; pmrState.phaseRemaining = metaStore.pmrTenseSec || PMR_TENSE_DEFAULT;
     renderPmr();
     pmrState.interval = setInterval(pmrTick, 1000);
   });
 }
 
 function pmrTick() {
-  const tenseSec = metaStore.pmrTenseSec || 3;
-  const relaxSec = metaStore.pmrRelaxSec || 10;
+  const tenseSec = metaStore.pmrTenseSec || PMR_TENSE_DEFAULT;
+  const relaxSec = metaStore.pmrRelaxSec || PMR_RELAX_DEFAULT;
   pmrState.phaseRemaining--;
   if (pmrState.phaseRemaining <= 0) {
     if (pmrState.phase === 'tense') {
@@ -5523,91 +5443,6 @@ loadHama();
 loadCalm();
 loadSleep();
 showScreen('home');
-
-// ── Logo: 凪  (favicon + Media Session artwork) ──────────────────────────
-let _artworkDataUrl = null;
-
-function getArtworkDataUrl() {
-  if (_artworkDataUrl !== null) return _artworkDataUrl;
-  try {
-    const S = 512, cx = 256, cy = 256;
-    const canvas = document.createElement('canvas');
-    canvas.width = S; canvas.height = S;
-    const ctx = canvas.getContext('2d');
-
-    const bg = ctx.createLinearGradient(0, 0, 0, S);
-    bg.addColorStop(0, '#F6F0E6'); bg.addColorStop(1, '#E6DCC8');
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, S, S);
-
-    const glow = ctx.createRadialGradient(cx, cy - 24, 0, cx, cy - 24, 360);
-    glow.addColorStop(0, 'rgba(196,154,90,0.17)');
-    glow.addColorStop(1, 'rgba(196,154,90,0)');
-    ctx.fillStyle = glow; ctx.fillRect(0, 0, S, S);
-
-    [105, 150, 195, 238].forEach((r, i) => {
-      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(140,107,62,${0.22 - i * 0.04})`;
-      ctx.lineWidth = i === 0 ? 0.9 : 0.5; ctx.stroke();
-    });
-
-    for (let a = 0; a < 360; a += 30) {
-      const rad = a * Math.PI / 180, len = a % 90 === 0 ? 13 : 6;
-      ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(rad) * 105, cy + Math.sin(rad) * 105);
-      ctx.lineTo(cx + Math.cos(rad) * (105 - len), cy + Math.sin(rad) * (105 - len));
-      ctx.strokeStyle = `rgba(140,107,62,${a % 90 === 0 ? 0.55 : 0.26})`;
-      ctx.lineWidth = a % 90 === 0 ? 0.9 : 0.5; ctx.stroke();
-    }
-
-    [[0, S, S, 0], [0, 0, S, S]].forEach(([x1, y1, x2, y2]) => {
-      const lg = ctx.createLinearGradient(x1, y1, x2, y2);
-      lg.addColorStop(0, 'rgba(140,107,62,0)');
-      lg.addColorStop(0.5, 'rgba(140,107,62,0.10)');
-      lg.addColorStop(1, 'rgba(140,107,62,0)');
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-      ctx.strokeStyle = lg; ctx.lineWidth = 0.6; ctx.stroke();
-    });
-
-    ctx.save();
-    ctx.globalAlpha = 0.05;
-    ctx.font = '500 430px "Shippori Mincho", serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#6B4F2A';
-    ctx.fillText('凪', cx, cy + 4);
-    ctx.restore();
-
-    const font = '500 268px "Shippori Mincho", serif';
-
-    ctx.save();
-    ctx.shadowColor = 'rgba(60,44,30,0.30)'; ctx.shadowBlur = 22;
-    const cg = ctx.createLinearGradient(cx, cy - 160, cx, cy + 120);
-    cg.addColorStop(0, '#5E4A36'); cg.addColorStop(0.6, '#3A2C1E'); cg.addColorStop(1, '#241A10');
-    ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = cg; ctx.fillText('凪', cx, cy);
-    ctx.restore();
-
-    ctx.save();
-    ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.strokeStyle = 'rgba(182,142,72,0.72)';
-    ctx.lineWidth = 0.8; ctx.lineJoin = 'round';
-    ctx.strokeText('凪', cx, cy);
-    ctx.restore();
-
-    [[cx, 38], [474, cy], [cx, 474], [38, cy]].forEach(([x, y]) => {
-      ctx.beginPath(); ctx.arc(x, y, 2.6, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(140,107,62,0.55)'; ctx.fill();
-    });
-
-    _artworkDataUrl = canvas.toDataURL('image/png');
-  } catch (e) {
-    _artworkDataUrl = '';
-  }
-  return _artworkDataUrl;
-}
-
-document.fonts.load('500 268px "Shippori Mincho"', '凪')
-  .then(() => { if (_artworkDataUrl === null) getArtworkDataUrl(); })
-  .catch(() => {});
 
 // Prevent iOS Safari from zooming in on input/textarea focus
 (function() {
