@@ -4745,7 +4745,6 @@ function sleepHistoryEntryHtml(key) {
 
 // ---------- Screen routing ----------
 function showScreen(name) {
-  window.scrollTo(0, 0);
   if (currentScreen === 'calm' && name !== 'calm') {
     if (breathState.interval) { clearInterval(breathState.interval); breathState.interval = null; breathState.running = false; }
     if (pmrState.interval)    { clearInterval(pmrState.interval);    pmrState.interval = null;    pmrState.mode = 'idle'; }
@@ -4810,6 +4809,7 @@ function showScreen(name) {
     document.querySelector('#sleep-tabs button[data-stab="today"]').classList.add('active');
     renderSleep();
   }
+  requestAnimationFrame(() => { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; });
 }
 
 // ---------- Back button ----------
