@@ -62,9 +62,7 @@
   }
   button, input, textarea { font-family: inherit; color: inherit; }
   button { background: none; border: none; padding: 0; cursor: pointer; }
-  @media (hover: none) and (pointer: coarse) {
-    input, textarea, select { font-size: max(16px, 1em); }
-  }
+
 
   header.app-bar {
     display: flex;
@@ -5673,8 +5671,8 @@ document.fonts.load('500 268px "Shippori Mincho"', '凪')
   const vp = document.querySelector('meta[name="viewport"]');
   const base = vp.content;
   const noZoom = base + ', maximum-scale=1';
-  document.addEventListener('focusin',  e => { if (e.target.matches('input, textarea')) vp.content = noZoom; });
-  document.addEventListener('focusout', e => { if (e.target.matches('input, textarea')) vp.content = base; });
+  document.addEventListener('touchstart', e => { if (e.target.matches('input, textarea, select')) vp.content = noZoom; }, { passive: true });
+  document.addEventListener('focusout',   e => { if (e.target.matches('input, textarea, select')) vp.content = base; });
 })();
 </script>
 </body>
