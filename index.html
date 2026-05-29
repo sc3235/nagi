@@ -490,8 +490,11 @@
     flex-wrap: wrap;
   }
   .edit-note::placeholder { color: var(--ink-faint); }
-  .day-dots { display: grid; grid-template-columns: repeat(14, 1fr); gap: 3px; }
-  .dot { aspect-ratio: 1; border-radius: 3px; background: var(--bg-card); }
+  .day-dots { display: flex; align-items: stretch; gap: 3px; }
+  .dot-group { display: flex; gap: 3px; }
+  .dot-div { width: 1px; background: var(--line); flex-shrink: 0; }
+  .dot { aspect-ratio: 1; border-radius: 3px; background: var(--bg-card); flex: 1 0 0; min-width: 0; }
+  .dot.optional { background: var(--line); }
   .dot[data-val="0"] { background: var(--good); }
   .dot[data-val="1"] { background: var(--mid); }
   .dot[data-val="2"] { background: var(--low); }
@@ -1985,6 +1988,8 @@ const SYMPTOMS = [
 
 // Per-button labels shown in rate rows (indexed 0-3). severityLabel() maps an avg score to a different vocabulary.
 const SCORE_LABELS = ['none', 'mild', 'mod', 'severe'];
+const PRIMARY_COUNT   = SYMPTOMS.filter(s => !s.optional).length; // 8
+const SECONDARY_COUNT = SYMPTOMS.filter(s =>  s.optional).length; // 6
 const BACKUP_INTERVAL_DAYS = 7;
 const PMR_TENSE_DEFAULT = 3;
 const PMR_RELAX_DEFAULT = 10;
@@ -2303,6 +2308,26 @@ const scrollTopSoon = () => requestAnimationFrame(() => {
 });
 
 // ---------- HAMA helpers ----------
+function renderDotGrid(ratings) {
+  const groups = [...new Set(SYMPTOMS.map(s => s.group))];
+  return groups.map((grp, gi) => {
+    const items = SYMPTOMS.map((s, i) => ({ ...s, index: i })).filter(s => s.group === grp);
+    const dots = items.map(s => {
+      const v = ratings[s.index];
+      return `<div class="dot${s.optional ? ' optional' : ''}"${v != null ? ` data-val="${v}"` : ''}></div>`;
+    }).join('');
+    return `<div class="dot-group" style="flex:${items.length}">${dots}</div>${gi < groups.length - 1 ? '<div class="dot-div"></div>' : ''}`;
+  }).join('');
+}
+
+function ratingPills(ratings) {
+  const primaryRated   = ratings.filter((r, i) => r != null && !SYMPTOMS[i].optional).length;
+  const secondaryRated = ratings.filter((r, i) => r != null &&  SYMPTOMS[i].optional).length;
+  let html = `<span class="score-pill">${primaryRated}/${PRIMARY_COUNT} primary</span>`;
+  if (secondaryRated > 0) html += `<span class="score-pill">${secondaryRated}/${SECONDARY_COUNT} secondary</span>`;
+  return html;
+}
+
 function getTodayEntry() {
   const k = todayKey();
   if (!hamaStore.history[k]) {
@@ -2389,12 +2414,12 @@ function renderToday() {
     ` : ''}
     <div class="today-snapshot">
       <div class="day-dots">
-        ${entry.ratings.map(v => `<div class="dot"${v != null ? ` data-val="${v}"` : ''}></div>`).join('')}
+        ${renderDotGrid(entry.ratings)}
       </div>
       ${ratedCount > 0 ? `
         <div class="snapshot-bottom">
           <span class="score-pill ${sClass}">${todayAvg.toFixed(1)} · ${sevLabel}</span>
-          <span class="score-pill">${ratedCount}/${SYMPTOMS.length} rated</span>
+          ${ratingPills(entry.ratings)}
         </div>
       ` : ''}
     </div>
@@ -2515,12 +2540,12 @@ function renderHistory() {
           </div>
         </div>
         <div class="day-dots">
-          ${e.ratings.map(v => `<div class="dot"${v != null ? ` data-val="${v}"` : ''}></div>`).join('')}
+          ${renderDotGrid(e.ratings)}
         </div>
         ${dayAvg != null ? `
           <div class="snapshot-bottom">
             <span class="score-pill ${dayClass}">${dayAvg.toFixed(1)} · ${sev}</span>
-            <span class="score-pill">${valid.length}/${SYMPTOMS.length} rated</span>
+            ${ratingPills(e.ratings)}
           </div>
         ` : ''}
         ${e.note ? `<div class="day-note">${escapeHtml(e.note)}</div>` : ''}
@@ -4398,9 +4423,10 @@ function renderHome() {
   const dateStr = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
   const todayAvgStr = todayAvg != null ? `${todayAvg.toFixed(1)} · ${severityLabel(todayAvg)}` : null;
 
+  const todayRatings = todayEntry ? todayEntry.ratings : [];
   const hamPills = `
     ${todayAvgStr ? `<span class="score-pill ${sClass}">${todayAvgStr}</span>` : ''}
-    <span class="score-pill">${rated.length > 0 ? `${rated.length}/${SYMPTOMS.length} rated` : 'no check-in'}</span>
+    ${rated.length > 0 ? ratingPills(todayRatings) : '<span class="score-pill">no check-in</span>'}
     <span class="score-pill">${streak} day${streak !== 1 ? 's' : ''} streak</span>`;
 
   const sleepRange    = SLEEP_RANGES[currentSleepRangeIdx()];
