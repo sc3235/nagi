@@ -1904,6 +1904,8 @@
   .sdot-div { width: 1px; align-self: stretch; background: var(--line); margin: 0 2px; flex-shrink: 0; }
   .sleep-day-dots .sdot { width: 16px; height: 16px; border-radius: 3px; background: var(--bg-card); flex-shrink: 0; }
   .sleep-day-dots .sdot.met { background: var(--sky); }
+  .sleep-day-dots .sdot.nice { background: var(--line); }
+  .sleep-day-dots .sdot.nice.met { background: color-mix(in srgb, var(--sky) 50%, var(--bg-card) 50%); }
   .sleep-edit-group-label {
     font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em;
     text-transform: uppercase; color: var(--ink-faint); margin: 16px 0 8px;
@@ -2177,33 +2179,33 @@ const PATTERNS = [
 // ---------- Sleep checklist ----------
 const SLEEP_RANGES = [
   { id: 'morning', name: 'Morning', time: '6–8 am', items: [
-    { id: 'm1', text: 'Get 7.5 hours of sleep' },
+    { id: 'm1', text: 'Sleep for 7.5 hours' },
     { id: 'm2', text: 'Wake up at a consistent time' },
     { id: 'm3', text: 'Wake up feeling well rested' },
   ]},
   { id: 'day', name: 'Day', time: '8 am – 6 pm', items: [
-    { id: 'd1', text: 'Exposure to daylight / bright light' },
+    { id: 'd1', text: 'Expose to daylight' },
     { id: 'd2', text: 'No caffeine after 3 pm' },
     { id: 'd3', text: 'No naps beyond a 20min power nap' },
   ]},
   { id: 'evening', name: 'Evening', time: '6–10 pm', items: [
     { id: 'e1', text: 'No large meals 2 hours before bed' },
     { id: 'e2', text: 'No intense exercise 1 hour before bed' },
-    { id: 'e3', text: 'No screens (except ebooks) 30min before bed' },
+    { id: 'e3', text: 'No screens (non-ebook) 30 min before bed' },
   ]},
   { id: 'night', name: 'Night', time: '10 pm – 6 am', items: [
     { id: 'n1', text: 'No work or other activities in bed' },
     { id: 'n2', text: 'Dark, cool bedroom and a comfortable bed' },
-    { id: 'n3', text: 'Ritual before bed', nice: true },
-    { id: 'n4', text: 'Calming technique before bed', nice: true },
     { id: 'n5', text: 'Go to sleep at a consistent time' },
     { id: 'n6', text: 'Go to sleep at an early time' },
+    { id: 'n3', text: 'Ritual before bed', nice: true },
+    { id: 'n4', text: 'Calming technique before bed', nice: true },
   ], tips: [
     'If anxious thoughts keep you awake, play an audiobook or podcast to replace them with neutral thoughts — keep screen light low.',
     'If you are still awake after 30 minutes, get up and do something relaxing in low light until you feel sleepy, then return to bed.',
   ]},
 ];
-const SLEEP_ITEM_COUNT = SLEEP_RANGES.reduce((n, r) => n + r.items.length, 0);
+const SLEEP_ITEM_COUNT = SLEEP_RANGES.reduce((n, r) => n + r.items.filter(it => !it.nice).length, 0);
 
 // ---------- Stores ----------
 let metaStore, hamaStore, calmStore, sleepStore;
@@ -4431,10 +4433,10 @@ function renderHome() {
 
   const sleepRange    = SLEEP_RANGES[currentSleepRangeIdx()];
   const sleepRec      = sleepStore.history[today];
-  const sleepRangeMet = sleepRange.items.filter(it => sleepCheckState(sleepRec, it)).length;
+  const sleepRangeMet = sleepRange.items.filter(it => !it.nice && sleepCheckState(sleepRec, it)).length;
   const sleepStreakN  = sleepStreak();
   const sleepPills = `
-    <span class="score-pill">${sleepRange.name.toLowerCase()} · ${sleepRangeMet}/${sleepRange.items.length} accomplished</span>
+    <span class="score-pill">${sleepRange.name.toLowerCase()} · ${sleepRangeMet}/${sleepRange.items.filter(it => !it.nice).length} accomplished</span>
     <span class="score-pill">${sleepStreakN} day${sleepStreakN !== 1 ? 's' : ''} streak</span>`;
 
   document.getElementById('home-hero-header').innerHTML = `
@@ -4485,7 +4487,7 @@ function sleepCheckState(rec, item) {
 }
 function sleepMetCount(rec) {
   let n = 0;
-  SLEEP_RANGES.forEach(r => r.items.forEach(it => { if (sleepCheckState(rec, it)) n++; }));
+  SLEEP_RANGES.forEach(r => r.items.forEach(it => { if (!it.nice && sleepCheckState(rec, it)) n++; }));
   return n;
 }
 function sleepStreak() {
@@ -4571,7 +4573,7 @@ function renderSleepChecklist() {
       ${range.tips.map(t => `<div class="sleep-tip">${escapeHtml(t)}</div>`).join('')}
     </div>` : '';
 
-  const metInRange = range.items.filter(it => sleepCheckState(rec, it)).length;
+  const metInRange = range.items.filter(it => !it.nice && sleepCheckState(rec, it)).length;
 
   const nowTag       = idx===nowIdx && dayOffset===0 ? ' · <span class="sleep-now-tag">now</span>' : '';
   const yesterdayTag = dayOffset === -1 ? ' · <span class="sleep-yday-tag">yesterday</span>' : '';
@@ -4589,7 +4591,7 @@ function renderSleepChecklist() {
     <div class="sleep-dots">${dots}</div>
     ${items}
     ${tips}
-    <div class="sleep-met-summary">${metInRange}/${range.items.length} accomplished</div>
+    <div class="sleep-met-summary">${metInRange}/${range.items.filter(it => !it.nice).length} accomplished</div>
   `;
 
   panel.querySelector('#sleep-prev').addEventListener('click', () => {
@@ -4684,7 +4686,7 @@ function sleepHistoryEntryHtml(key) {
 
   const dots = SLEEP_RANGES.map((r, ri) =>
     `<div class="sdot-group">${r.items.map(it =>
-      `<div class="sdot ${sleepCheckState(rec, it)?'met':''}"></div>`
+      `<div class="sdot ${it.nice?'nice':''} ${sleepCheckState(rec, it)?'met':''}"></div>`
     ).join('')}</div>${ri < SLEEP_RANGES.length - 1 ? '<div class="sdot-div"></div>' : ''}`
   ).join('');
   return `
