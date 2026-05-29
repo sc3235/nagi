@@ -1869,6 +1869,8 @@
     transition: all 0.15s;
   }
   .sleep-check-row.checked .sleep-checkbox { background: var(--sky); border-color: var(--sky); }
+  .sleep-check-row.nice .sleep-checkbox { background: var(--line); border-color: var(--line); }
+  .sleep-check-row.nice.checked .sleep-checkbox { background: color-mix(in srgb, var(--slate) 50%, var(--bg-card) 50%); border-color: color-mix(in srgb, var(--slate) 50%, var(--bg-card) 50%); }
   .sleep-checkbox svg { width: 14px; height: 14px; opacity: 0; transition: opacity 0.15s; }
   .sleep-check-row.checked .sleep-checkbox svg { opacity: 1; }
   .sleep-check-label { flex: 1; font-size: 15px; line-height: 1.4; color: var(--ink); }
@@ -1905,7 +1907,7 @@
   .sleep-day-dots .sdot { width: 16px; height: 16px; border-radius: 3px; background: var(--bg-card); flex-shrink: 0; }
   .sleep-day-dots .sdot.met { background: var(--sky); }
   .sleep-day-dots .sdot.nice { background: var(--line); }
-  .sleep-day-dots .sdot.nice.met { background: color-mix(in srgb, var(--sky) 50%, var(--bg-card) 50%); }
+  .sleep-day-dots .sdot.nice.met { background: color-mix(in srgb, var(--slate) 50%, var(--bg-card) 50%); }
   .sleep-edit-group-label {
     font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em;
     text-transform: uppercase; color: var(--ink-faint); margin: 16px 0 8px;
@@ -2185,21 +2187,20 @@ const SLEEP_RANGES = [
   ]},
   { id: 'day', name: 'Day', time: '8 am – 6 pm', items: [
     { id: 'd1', text: 'Expose to daylight' },
-    { id: 'd2', text: 'No caffeine after 3 pm' },
-    { id: 'd3', text: 'No naps beyond a 20min power nap' },
+    { id: 'd2', text: 'No caffeine after 3pm' },
+    { id: 'd3', text: 'No naps beyond a 20m power nap' },
   ]},
   { id: 'evening', name: 'Evening', time: '6–10 pm', items: [
-    { id: 'e1', text: 'No large meals 2 hours before bed' },
-    { id: 'e2', text: 'No intense exercise 1 hour before bed' },
-    { id: 'e3', text: 'No screens (non-ebook) 30 min before bed' },
+    { id: 'e1', text: 'No large meals 2h before bed' },
+    { id: 'e2', text: 'No intense exercise 1h before bed' },
+    { id: 'n1', text: 'No work or other activities in bed' },
   ]},
   { id: 'night', name: 'Night', time: '10 pm – 6 am', items: [
-    { id: 'n1', text: 'No work or other activities in bed' },
-    { id: 'n2', text: 'Dark, cool bedroom and a comfortable bed' },
-    { id: 'n5', text: 'Go to sleep at a consistent time' },
-    { id: 'n6', text: 'Go to sleep at an early time' },
+    { id: 'e3', text: 'No screens (non-ebook) 30m before bed' },
+    { id: 'n2', text: 'Dark and cool room and comfortable bed' },
+    { id: 'n5', text: 'Go to sleep at a consistent early time' },
     { id: 'n3', text: 'Ritual before bed', nice: true },
-    { id: 'n4', text: 'Calming technique before bed', nice: true },
+    { id: 'n4', text: 'Relax before bed', nice: true },
   ], tips: [
     'If anxious thoughts keep you awake, play an audiobook or podcast to replace them with neutral thoughts — keep screen light low.',
     'If you are still awake after 30 minutes, get up and do something relaxing in low light until you feel sleepy, then return to bed.',
@@ -4561,7 +4562,7 @@ function renderSleepChecklist() {
   const items = range.items.map(it => {
     const on = sleepCheckState(rec, it);
     return `
-      <button class="sleep-check-row ${on?'checked':''}" data-item="${it.id}">
+      <button class="sleep-check-row ${it.nice?'nice':''} ${on?'checked':''}" data-item="${it.id}">
         <span class="sleep-checkbox">${sleepCheckIcon()}</span>
         <span class="sleep-check-label">${escapeHtml(it.text)}${it.nice?'<span class="sleep-nice-tag">nice to have</span>':''}</span>
       </button>`;
@@ -4663,7 +4664,7 @@ function sleepHistoryEntryHtml(key) {
       ${r.items.map(it => {
         const on = sleepCheckState(rec, it);
         return `
-          <button class="sleep-check-row ${on?'checked':''}" data-edititem="${it.id}">
+          <button class="sleep-check-row ${it.nice?'nice':''} ${on?'checked':''}" data-edititem="${it.id}">
             <span class="sleep-checkbox">${sleepCheckIcon()}</span>
             <span class="sleep-check-label">${escapeHtml(it.text)}${it.nice?'<span class="sleep-nice-tag">nice to have</span>':''}</span>
           </button>`;
