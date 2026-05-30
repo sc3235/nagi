@@ -2030,29 +2030,29 @@ const PATTERNS = [
       "I've handled difficult situations before.",
     ]
   },
-  {
-    id: 'mind_reading',
-    label: 'Mind reading',
-    description: "Assuming you know what others are thinking, usually negatively",
-    thoughts: [
-      "I can't know what they're thinking without discussing it with them.",
-      "I can't please everyone, and it's not my job to do so.",
-      "Did the other person really say that, or am I just assuming?",
-      "There are many reasons someone might act that way — I'm only seeing one.",
-    ]
-  },
-  {
-    id: 'catastrophizing',
-    label: 'Catastrophizing',
-    description: 'Blowing the consequences of an event out of proportion',
-    thoughts: [
-      "This is not the worst thing that could happen.",
-      "Even if it goes badly, I will recover.",
-      "What's the realistic outcome, not the worst-case one?",
-      "I've survived difficult things before.",
-      "How much will this matter in a year?",
-    ]
-  },
+  // {
+  //   id: 'mind_reading',
+  //   label: 'Mind reading',
+  //   description: "Assuming you know what others are thinking, usually negatively",
+  //   thoughts: [
+  //     "I can't know what they're thinking without discussing it with them.",
+  //     "I can't please everyone, and it's not my job to do so.",
+  //     "Did the other person really say that, or am I just assuming?",
+  //     "There are many reasons someone might act that way — I'm only seeing one.",
+  //   ]
+  // },
+  // {
+  //   id: 'catastrophizing',
+  //   label: 'Catastrophizing',
+  //   description: 'Blowing the consequences of an event out of proportion',
+  //   thoughts: [
+  //     "This is not the worst thing that could happen.",
+  //     "Even if it goes badly, I will recover.",
+  //     "What's the realistic outcome, not the worst-case one?",
+  //     "I've survived difficult things before.",
+  //     "How much will this matter in a year?",
+  //   ]
+  // },
   {
     id: 'perfectionism',
     label: 'Perfectionism',
@@ -2110,17 +2110,17 @@ const PATTERNS = [
       "What's the actual evidence this always happens?",
     ]
   },
-  {
-    id: 'emotional_reasoning',
-    label: 'Emotional reasoning',
-    description: "Assuming something is true because it feels true",
-    thoughts: [
-      "Feeling like a failure doesn't make me one.",
-      "My emotions are real but they're not always accurate reporters of reality.",
-      "What would I think about this if I wasn't feeling this way?",
-      "Feelings are data, not conclusions.",
-    ]
-  },
+  // {
+  //   id: 'emotional_reasoning',
+  //   label: 'Emotional reasoning',
+  //   description: "Assuming something is true because it feels true",
+  //   thoughts: [
+  //     "Feeling like a failure doesn't make me one.",
+  //     "My emotions are real but they're not always accurate reporters of reality.",
+  //     "What would I think about this if I wasn't feeling this way?",
+  //     "Feelings are data, not conclusions.",
+  //   ]
+  // },
   {
     id: 'personalization',
     label: 'Personalization',
@@ -2155,19 +2155,8 @@ const PATTERNS = [
     ]
   },
   {
-    id: 'labeling',
-    label: 'Labeling',
-    description: 'Attaching a global negative label to yourself or others based on one event',
-    thoughts: [
-      "I made a mistake — that doesn't make me a failure.",
-      "One action doesn't define a whole person.",
-      "Would I label a friend this way for the same thing?",
-      "Behavior is specific; labels are global and unfair.",
-    ]
-  },
-  {
     id: 'mental_filter',
-    label: 'Mental filter',
+    label: 'Focusing on negatives',
     description: 'Focusing exclusively on negatives while ignoring the full picture',
     thoughts: [
       "What am I leaving out of this picture?",
@@ -2176,6 +2165,18 @@ const PATTERNS = [
       "What would a balanced account of this situation look like?",
     ]
   },
+  // {
+  //   id: 'labeling',
+  //   label: 'Labeling',
+  //   description: 'Attaching a global negative label to yourself or others based on one event',
+  //   thoughts: [
+  //     "I made a mistake — that doesn't make me a failure.",
+  //     "One action doesn't define a whole person.",
+  //     "Would I label a friend this way for the same thing?",
+  //     "Behavior is specific; labels are global and unfair.",
+  //   ]
+  // },
+
 ];
 
 // ---------- Sleep checklist ----------
@@ -4940,8 +4941,8 @@ const PHASES = [
 
 const CALM_CARDS = [
   { tab: 'breathing', name: 'Deep Breathing',  tag: '呼吸', variant: 'sky',   cue: 'Nervous system regulation' },
-  { tab: 'grounding', name: 'Grounding',       tag: '実感', variant: 'slate', cue: 'Sensory reset, narration, or imagery' },
-  { tab: 'tea',       name: 'Emotions at Tea', tag: '感情', variant: 'sage',  cue: 'Sit with what\'s visiting' },
+  { tab: 'grounding', name: 'Grounding',       tag: '実感', variant: 'slate', cue: 'Sensory reset, narration, imagery' },
+  { tab: 'tea',       name: 'Visitors with Tea', tag: '感情', variant: 'sage',  cue: 'Sit with what\'s visiting' },
   { tab: 'pmr',       name: 'PMR',             tag: '弛緩', variant: 'amber', cue: 'Progressive muscle relaxation' },
 ];
 
@@ -5270,7 +5271,7 @@ function renderGrounding() {
   }
 }
 
-// --- Emotions at tea ---
+// --- Visitors with tea ---
 let teaState = { mode: 'idle', word: '' };
 
 function renderTea() {
@@ -5278,10 +5279,10 @@ function renderTea() {
 
   if (teaState.mode === 'idle') {
     panel.innerHTML = `
-      <div class="calm-heading">Emotions at tea</div>
+      <div class="calm-heading">Visitors with tea</div>
       <p class="calm-sub">Thoughts and feelings are visitors. They arrive uninvited, they're not always welcome, but they don't have to run the house.</p>
       <div class="calm-picker-label">What's visiting right now?</div>
-      <input type="text" class="tea-input" id="tea-word" placeholder="anxiety, dread, shame, restlessness, ..." value="${escapeHtml(teaState.word)}" autocomplete="off" />
+      <input type="text" class="tea-input" id="tea-word" placeholder="anxiety, dread, shame, ..." value="${escapeHtml(teaState.word)}" autocomplete="off" />
       <button class="calm-start-btn clr-matcha-btn" id="tea-begin" style="margin-top:16px">Begin</button>
     `;
     const input = document.getElementById('tea-word');
