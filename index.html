@@ -4861,12 +4861,27 @@ const PMR_GROUPS = [
   { name: 'Feet',      tense: 'Curl toes',                            release: 'Wiggle toes, release' },
 ];
 
-const BEACH_SCRIPT = [
-  `You are walking in a wooded area, following a dirt road that you have been assured will lead you to a beach. As you listen to the gentle crunching of your shoes on the ground, you notice that the road is somewhat sandy, which gives you hope that the beach isn't far away. You listen to the wind gently blowing through the trees and hear the cries of seagulls. Yes! The beach cannot be far away.`,
-  `As you round a curve in the shady road, you see ahead of you a sandy path that slopes away from the road and down through the trees. The trees lining the path are a mix of huge pine and oak trees, and the path is not only sandy, but also coated with pine needles from the trees. The air is filled with the fragrant smell of pines, and the wind seems to be coming up the path toward you, bringing the smell of the lake as well. You move more eagerly down the incline of the shady path and hear children's voices. Two laughing children come running up the path toward you, wearing bathing suits, their wet feet coated with sand as they run up the path.`,
-  `The path becomes broader and takes you down into sunshine. You come out of the shade of the trees onto a golden beach with a clear blue lake ahead of you. You see two colorful umbrellas and a few people on the beach, but what catches your eye are the magnificent white clouds floating over the lake. Their brilliant whiteness contrasts with the light blue of the sky and the darker blue of the water. The lake is so large that you can't see the shore on the other side, just the place where the light blue sky meets the water. You stand for a moment and take in the scene, listening to the calls of the seagulls as they glide on the wind currents above the lake. You see gentle waves washing up on the shore, and you walk through the sand toward the shoreline, struggling through some of the deeper sand as you go.`,
-  `As you reach the edge of the beach, you take off your shoes and shake the sand off them. You walk barefoot in the dark, wet sand near the water's edge, feeling the damp sand give gently under each step you take. You turn around and notice the footprints you are leaving in the sand behind you. Then you step toward the water to get your toes a little wet, and the coldness of the water is surprising. You don't really want to go any farther into the lake.`,
-  `Still, you are very pleased to have found this beach, and as you stand and feel the waves lapping on your feet, you enjoy the sights and sounds around you. You stand and enjoy the warm sun on your shoulders and face, and the breeze off the lake moving through your hair. You take a deep breath and try to take a mental picture of the beautiful scene so you can remember it when you leave to return up the sandy trail.`,
+const IMAGERY_SCRIPTS = [
+  {
+    label: 'Beach I',
+    paragraphs: [
+      `You are walking in a wooded area, following a dirt road that you have been assured will lead you to a beach. As you listen to the gentle crunching of your shoes on the ground, you notice that the road is somewhat sandy, which gives you hope that the beach isn't far away. You listen to the wind gently blowing through the trees and hear the cries of seagulls. Yes! The beach cannot be far away.`,
+      `As you round a curve in the shady road, you see ahead of you a sandy path that slopes away from the road and down through the trees. The trees lining the path are a mix of huge pine and oak trees, and the path is not only sandy, but also coated with pine needles from the trees. The air is filled with the fragrant smell of pines, and the wind seems to be coming up the path toward you, bringing the smell of the lake as well. You move more eagerly down the incline of the shady path and hear children's voices. Two laughing children come running up the path toward you, wearing bathing suits, their wet feet coated with sand as they run up the path.`,
+      `The path becomes broader and takes you down into sunshine. You come out of the shade of the trees onto a golden beach with a clear blue lake ahead of you. You see two colorful umbrellas and a few people on the beach, but what catches your eye are the magnificent white clouds floating over the lake. Their brilliant whiteness contrasts with the light blue of the sky and the darker blue of the water. The lake is so large that you can't see the shore on the other side, just the place where the light blue sky meets the water. You stand for a moment and take in the scene, listening to the calls of the seagulls as they glide on the wind currents above the lake. You see gentle waves washing up on the shore, and you walk through the sand toward the shoreline, struggling through some of the deeper sand as you go.`,
+      `As you reach the edge of the beach, you take off your shoes and shake the sand off them. You walk barefoot in the dark, wet sand near the water's edge, feeling the damp sand give gently under each step you take. You turn around and notice the footprints you are leaving in the sand behind you. Then you step toward the water to get your toes a little wet, and the coldness of the water is surprising. You don't really want to go any farther into the lake.`,
+      `Still, you are very pleased to have found this beach, and as you stand and feel the waves lapping on your feet, you enjoy the sights and sounds around you. You stand and enjoy the warm sun on your shoulders and face, and the breeze off the lake moving through your hair. You take a deep breath and try to take a mental picture of the beautiful scene so you can remember it when you leave to return up the sandy trail.`,
+    ],
+  },
+  {
+    label: 'Beach II',
+    paragraphs: [
+      `Imagine yourself walking on a sandy path to a beach. As you walk on the path, you're surrounded by trees that keep you in dark shade. You feel the sand begin to get into your shoes as you walk along. You can hear the leaves in the trees softly moving in the wind, but up ahead you hear another sound: gentle waves washing up on shore.`,
+      `As you continue, you leave the shade of the trees to walk out onto a sunny, sandy beach. The sun warms your head and shoulders as you stand still for a moment to take in your surroundings. The sky is a beautiful shade of blue, and wispy white clouds seem to hang motionless in the sky. You take off your shoes and feel the warm sand as your feet sink in. Holding your shoes, you move toward the water. The sound of the waves rhythmically washing up on the shore has a hypnotic quality. You breathe deeply, in unison with the waves.`,
+      `The water is dark blue, and far off, on the horizon, you can see a darker blue line where the water meets the light blue sky. In the distance, you see two sailboats, one with a white sail and one with a red sail; they appear to be racing one another. The damp smell of driftwood reaches your nose, and you see some driftwood nearby. You place your shoes on a smooth, weathered log and walk toward the waves.`,
+      `Seagulls swoop overhead, and you hear their excited cries as they glide on the gentle breeze coming in with the waves. You feel the breeze on your skin and smell its freshness. As you walk toward the waves, you see the sun reflected on the water. You walk into the damp sand, leaving footprints now as you walk along the shore. A wave breaks over your feet, surprisingly cold at first.`,
+      `You stand still as the waves wash over your ankles. Listening to the repetitive sound of the waves and the cries of the gulls, you feel the wind blowing your hair away from your face. You take slow, deep breaths of the cool, clean air…`,
+    ],
+  },
 ];
 
 const BREATH_RING_CIRC = 528; // matches r=84 circle: 2π×84 ≈ 528
@@ -4893,7 +4908,7 @@ let breathState = {
   cyclesDone: 0, timerEndAt: null, interval: null,
 };
 
-let imageryState = { idx: -1 };
+let imageryState = { idx: -1, scriptKey: 0 };
 
 let pmrState = { mode: 'idle', stepIdx: 0, phase: 'tense', phaseRemaining: 3, interval: null };
 
@@ -5134,6 +5149,10 @@ function renderGrounding() {
                  <button class="calm-pick-btn" id="grd-hist-link" style="margin-top:12px;width:100%">View past narrations →</button>`;
     } else {
       subBody = `<p class="calm-sub">Find a comfortable, quiet position. As you read each passage, engage all your senses — see, hear, smell, and feel the scene in your mind.</p>
+                 <div class="calm-picker-label">Script</div>
+                 <div class="calm-picker-row">
+                   ${IMAGERY_SCRIPTS.map((s, i) => `<button class="calm-pick-btn ${imageryState.scriptKey === i ? 'active' : ''}" data-script="${i}">${s.label}</button>`).join('')}
+                 </div>
                  <button class="calm-start-btn clr-slate-btn" id="grd-start">Begin</button>`;
     }
     panel.innerHTML = `
@@ -5148,6 +5167,7 @@ function renderGrounding() {
       ${subBody}
     `;
     panel.querySelectorAll('[data-sub]').forEach(b => b.addEventListener('click', () => { groundingState.subMode = b.dataset.sub; renderGrounding(); }));
+    panel.querySelectorAll('[data-script]').forEach(b => b.addEventListener('click', () => { imageryState.scriptKey = parseInt(b.dataset.script, 10); renderGrounding(); }));
     panel.querySelector('#grd-start').addEventListener('click', () => {
       groundingState.mode = groundingState.subMode;
       groundingState.senseStep = 0; groundingState.senseCount = 0;
@@ -5226,13 +5246,14 @@ function renderGrounding() {
   }
 
   if (groundingState.mode === 'imagery') {
-    const isLast = imageryState.idx >= BEACH_SCRIPT.length - 1;
+    const script = IMAGERY_SCRIPTS[imageryState.scriptKey].paragraphs;
+    const isLast = imageryState.idx >= script.length - 1;
     panel.innerHTML = `
-      <div class="imagery-progress">${imageryState.idx+1} / ${BEACH_SCRIPT.length}</div>
+      <div class="imagery-progress">${imageryState.idx+1} / ${script.length}</div>
       <div class="imagery-dots">
-        ${BEACH_SCRIPT.map((_,i) => `<div class="imagery-dot ${i===imageryState.idx?'current':i<imageryState.idx?'done':''}"></div>`).join('')}
+        ${script.map((_,i) => `<div class="imagery-dot ${i===imageryState.idx?'current':i<imageryState.idx?'done':''}"></div>`).join('')}
       </div>
-      <div class="imagery-text">${escapeHtml(BEACH_SCRIPT[imageryState.idx])}</div>
+      <div class="imagery-text">${escapeHtml(script[imageryState.idx])}</div>
       <div class="imagery-actions">
         ${imageryState.idx > 0 ? `<button class="imagery-nav-btn" id="imagery-back">← back</button>` : ''}
         <button class="imagery-nav-btn ${isLast?'primary':''}" id="imagery-next">${isLast?'Done':'Next →'}</button>
