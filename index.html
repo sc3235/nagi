@@ -2795,14 +2795,6 @@ const TK_CATALOGUE = [
     example: 'I\'m worried about an upcoming review.',
   },
   {
-    id: 'values_alignment',
-    name: 'Values Alignment',
-    tag: '価値',
-    variant: 'sage',
-    cue: 'I feel a wedge between my values and my surroundings, I want to realign.',
-    example: 'Being genuine matters a lot to me, and I find that I can\'t deal with politics.',
-  },
-  {
     id: 'injustice_navigation',
     name: 'Injustice Navigation',
     tag: '公正',
@@ -2811,11 +2803,19 @@ const TK_CATALOGUE = [
     example: 'I\'m being treated unfairly.',
   },
   {
+    id: 'values_alignment',
+    name: 'Values Alignment',
+    tag: '価値',
+    variant: 'sage',
+    cue: 'I feel a wedge between my values and my surroundings, I want to realign.',
+    example: 'Being genuine matters a lot to me, and I find that I can\'t deal with politics.',
+  },
+  {
     id: 'exposure_rewire',
     name: 'Exposure Rewire',
     tag: '構築',
     variant: 'amber',
-    cue: 'I\'ve been avoiding something scary, I want to learn to face it slowly.',
+    cue: 'I have an irrational fear, I want my amygdala to learn that it is safe.',
     example: 'I\'ve been dreading driving ever since an overly intense lesson.',
   },
 ];
@@ -3521,7 +3521,7 @@ function renderToolThoughtWorkthrough(panel) {
       panel.innerHTML = `
         ${header('Belief check')}
         <div class="wt-step-heading">You've checked your belief. What would you like to do next?</div>
-        <button class="wt-primary-btn" id="twt-triage-done">Glad I checked my belief — I am done</button>
+        <button class="wt-primary-btn" id="twt-triage-done">Glad I checked my belief — done for now</button>
         <button class="wt-primary-btn" id="twt-triage-continue" style="margin-top:8px">Even if my belief were true…</button>
         <button class="wt-back-btn" id="twt-prev" style="margin-top:8px">← back</button>
       `;
@@ -3710,7 +3710,7 @@ function renderToolValuesCheck(panel) {
     if (s.injAgency    === undefined) s.injAgency    = '';
     if (s.injAction    === undefined) s.injAction    = '';
 
-    const IJ_TOTAL = 5;
+    const IJ_TOTAL = 6;
     const ijHeader = (cur, label) => wtProgressHeader(cur, IJ_TOTAL, label);
 
     const injSaveRecord = () => {
@@ -3737,7 +3737,18 @@ function renderToolValuesCheck(panel) {
       panel.querySelector('#ij-prev').addEventListener('click', () => { tkBackToLanding(); });
     } else if (s.step === 2) {
       panel.innerHTML = `
-        ${ijHeader(2, 'Identity')}
+        ${ijHeader(2, 'Reflection')}
+        <div class="tk-note-card">When bad things happen, letting go and opening yourself to the limitless possibilities life has to offer is often the hardest, yet the most needed lesson. Trust that things will happen in the way they need to, when the time is ripe. As everything in nature, human life also goes through seasons and cycles. Perhaps it is not the time for a harvest yet.</div>
+        <button class="wt-primary-btn" id="ij-triage-done" style="margin-top:16px">I'm letting it go — done for now</button>
+        <button class="wt-primary-btn" id="ij-triage-continue" style="margin-top:8px">Let me reflect a bit further...</button>
+        <button class="wt-back-btn" id="ij-prev" style="margin-top:8px">← back</button>
+      `;
+      panel.querySelector('#ij-triage-done').addEventListener('click', () => { s.step = 'done'; renderWorkthrough(); });
+      panel.querySelector('#ij-triage-continue').addEventListener('click', () => { s.step = 3; renderWorkthrough(); });
+      panel.querySelector('#ij-prev').addEventListener('click', () => { s.step = 1; renderWorkthrough(); });
+    } else if (s.step === 3) {
+      panel.innerHTML = `
+        ${ijHeader(3, 'Identity')}
         <div class="wt-step-heading">What kind of person do you want to be even in an unfair world? Which values matter to you regardless of outcome?</div>
         <textarea class="wt-textarea" id="ij-identity" placeholder="Someone who holds justice as a standard, not a guarantee. Someone who shows up for others." style="min-height:140px">${escapeHtml(s.injIdentity)}</textarea>
         <button class="wt-primary-btn" id="ij-next">Next →</button>
@@ -3745,11 +3756,11 @@ function renderToolValuesCheck(panel) {
       `;
       const ta = panel.querySelector('#ij-identity');
       ta.addEventListener('input', () => { s.injIdentity = ta.value; });
-      panel.querySelector('#ij-next').addEventListener('click', () => { s.step = 3; renderWorkthrough(); });
-      panel.querySelector('#ij-prev').addEventListener('click', () => { s.step = 1; renderWorkthrough(); });
-    } else if (s.step === 3) {
+      panel.querySelector('#ij-next').addEventListener('click', () => { s.step = 4; renderWorkthrough(); });
+      panel.querySelector('#ij-prev').addEventListener('click', () => { s.step = 2; renderWorkthrough(); });
+    } else if (s.step === 4) {
       panel.innerHTML = `
-        ${ijHeader(3, 'Meaning')}
+        ${ijHeader(4, 'Meaning')}
         <div class="wt-step-heading">What strengths did you develop because you survived the injustice? What do you understand now that you didn't before?</div>
         <textarea class="wt-textarea" id="ij-meaning" placeholder="I developed the ability to read people quickly. I understand that being a victim says nothing true about me." style="min-height:140px">${escapeHtml(s.injMeaning)}</textarea>
         <button class="wt-primary-btn" id="ij-next">Next →</button>
@@ -3757,11 +3768,11 @@ function renderToolValuesCheck(panel) {
       `;
       const ta = panel.querySelector('#ij-meaning');
       ta.addEventListener('input', () => { s.injMeaning = ta.value; });
-      panel.querySelector('#ij-next').addEventListener('click', () => { s.step = 4; renderWorkthrough(); });
-      panel.querySelector('#ij-prev').addEventListener('click', () => { s.step = 2; renderWorkthrough(); });
-    } else if (s.step === 4) {
+      panel.querySelector('#ij-next').addEventListener('click', () => { s.step = 5; renderWorkthrough(); });
+      panel.querySelector('#ij-prev').addEventListener('click', () => { s.step = 3; renderWorkthrough(); });
+    } else if (s.step === 5) {
       panel.innerHTML = `
-        ${ijHeader(4, 'Agency')}
+        ${ijHeader(5, 'Agency')}
         <div class="wt-step-heading">What are things you can vs. cannot control at the moment?</div>
         <textarea class="wt-textarea" id="ij-agency" placeholder="Cannot: whether bullies prosper, whether bullies repented.\nCan: who gets to be involved in my life, how I react to events." style="min-height:140px">${escapeHtml(s.injAgency)}</textarea>
         <button class="wt-primary-btn" id="ij-next">Next →</button>
@@ -3769,11 +3780,11 @@ function renderToolValuesCheck(panel) {
       `;
       const ta = panel.querySelector('#ij-agency');
       ta.addEventListener('input', () => { s.injAgency = ta.value; });
-      panel.querySelector('#ij-next').addEventListener('click', () => { s.step = 5; renderWorkthrough(); });
-      panel.querySelector('#ij-prev').addEventListener('click', () => { s.step = 3; renderWorkthrough(); });
-    } else if (s.step === 5) {
+      panel.querySelector('#ij-next').addEventListener('click', () => { s.step = 6; renderWorkthrough(); });
+      panel.querySelector('#ij-prev').addEventListener('click', () => { s.step = 4; renderWorkthrough(); });
+    } else if (s.step === 6) {
       panel.innerHTML = `
-        ${ijHeader(5, 'Action')}
+        ${ijHeader(6, 'Action')}
         <div class="tk-note-card">The problem is human-sized, not existentially infinite.</div>
         <div class="wt-step-heading" style="margin-top:16px">Given that unfairness exists, what would caring for myself wisely look like today?</div>
         <textarea class="wt-textarea" id="ij-action" placeholder="Rest. Talk about it. Do something enjoyable. Don't let injustice turn you into a smaller version of yourself." style="min-height:120px">${escapeHtml(s.injAction)}</textarea>
@@ -3783,7 +3794,7 @@ function renderToolValuesCheck(panel) {
       const ta = panel.querySelector('#ij-action');
       ta.addEventListener('input', () => { s.injAction = ta.value; });
       panel.querySelector('#ij-next').addEventListener('click', () => { s.step = 'done'; renderWorkthrough(); });
-      panel.querySelector('#ij-prev').addEventListener('click', () => { s.step = 4; renderWorkthrough(); });
+      panel.querySelector('#ij-prev').addEventListener('click', () => { s.step = 5; renderWorkthrough(); });
     } else if (s.step === 'done') {
       panel.innerHTML = `
         <div class="wt-step-heading">Done.</div>
@@ -4935,15 +4946,15 @@ function getShownGroups() {
 const PHASES = [
   { num: 1, screen: 'sleep',       name: 'Sleep',   tag: '眠り',  variant: 'sky',   desc: 'Daily sleep checklist' },
   { num: 2, screen: 'hama',        name: 'HAM-A',   tag: '焦り',  variant: 'slate', desc: 'Daily anxiety scoring' },
-  { num: 3, screen: 'calm',        name: 'Calm',    tag: '静穏',  variant: 'sage',  desc: 'Calming exercises' },
-  { num: 4, screen: 'workthrough', name: 'Toolkit', tag: '療法',  variant: 'amber', desc: 'CBT/ACT tools' },
+  { num: 3, screen: 'calm',        name: 'Calm',    tag: '静穏',  variant: 'sage',  desc: 'Befriend your sensations' },
+  { num: 4, screen: 'workthrough', name: 'Toolkit', tag: '療法',  variant: 'amber', desc: 'Trust your adaptability' },
 ];
 
 const CALM_CARDS = [
-  { tab: 'breathing', name: 'Deep Breathing',  tag: '呼吸', variant: 'sky',   cue: 'Nervous system regulation' },
-  { tab: 'grounding', name: 'Grounding',       tag: '実感', variant: 'slate', cue: 'Sensory reset, narration, imagery' },
+  { tab: 'breathing', name: 'Deep Breathing',  tag: '呼吸', variant: 'sky',   cue: 'Regulate your nervous system' },
+  { tab: 'grounding', name: 'Grounding',       tag: '実感', variant: 'slate', cue: 'Reset your senses, narrate your story, or imbue in imagery' },
   { tab: 'tea',       name: 'Visitors with Tea', tag: '感情', variant: 'sage',  cue: 'Sit with what\'s visiting' },
-  { tab: 'pmr',       name: 'PMR',             tag: '弛緩', variant: 'amber', cue: 'Progressive muscle relaxation' },
+  { tab: 'pmr',       name: 'Muscle Relaxation',             tag: '弛緩', variant: 'amber', cue: 'Relax your physical body' },
 ];
 
 function renderCalm() {
