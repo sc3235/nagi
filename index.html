@@ -2921,11 +2921,6 @@ function expProgressRow(step) {
   if (log[step])      return wtProgressHeader(log[step],   2);
   return '';
 }
-function expValuesWarnHtml(text) {
-  const looksLikeReduction = /anxi|nervous|less scared|less afraid|calm down|\brelax|feel better|stop feeling|feel less|feel calm/i.test(text || '');
-  if (!looksLikeReduction) return '';
-  return `<div class="exp-nudge" style="margin-top:2px">That sounds like it's about reducing the feeling. Try again — what do you <em>care about</em> that this connects to? A person, a goal, the kind of life you want to live.</div>`;
-}
 
 function expPersist(s, status) {
   const all = loadTkExp();
@@ -3002,7 +2997,6 @@ function renderToolExposure(panel) {
     html += `<div class="wt-step-heading">Why does facing this matter to you?</div>`;
     html += `<div class="wt-tool-helper">Name what you care about — the person you want to be, the life this connects to. That's what makes willingness possible.</div>`;
     html += `<textarea class="wt-textarea" id="exp-field" placeholder="I want to open up options to the world.">${escapeHtml(s.values_link)}</textarea>`;
-    html += `<div id="exp-values-warn">${expValuesWarnHtml(s.values_link)}</div>`;
     html += `<button class="wt-primary-btn" id="exp-next" ${s.values_link.trim() ? '' : 'disabled'}>Next →</button>`;
     html += `<button class="wt-back-btn" id="exp-back" style="margin-top:6px">← back</button>`;
   } else if (s.step === 'ready') {
@@ -3072,10 +3066,6 @@ function renderToolExposure(panel) {
       else if (s.step === 'outcome') s.outcome = field.value;
       const nb = panel.querySelector('#exp-next');
       if (nb) nb.disabled = !field.value.trim();
-      if (s.step === 'values') {
-        const warn = panel.querySelector('#exp-values-warn');
-        if (warn) warn.innerHTML = expValuesWarnHtml(field.value);
-      }
     });
   }
 
@@ -4946,15 +4936,15 @@ function getShownGroups() {
 const PHASES = [
   { num: 1, screen: 'sleep',       name: 'Sleep',   tag: '眠り',  variant: 'sky',   desc: 'Daily sleep checklist' },
   { num: 2, screen: 'hama',        name: 'HAM-A',   tag: '焦り',  variant: 'slate', desc: 'Daily anxiety scoring' },
-  { num: 3, screen: 'calm',        name: 'Calm',    tag: '静穏',  variant: 'sage',  desc: 'Befriend your sensations' },
-  { num: 4, screen: 'workthrough', name: 'Toolkit', tag: '療法',  variant: 'amber', desc: 'Trust your adaptability' },
+  { num: 3, screen: 'calm',        name: 'Calm',    tag: '静穏',  variant: 'sage',  desc: 'Befriend my sensations' },
+  { num: 4, screen: 'workthrough', name: 'Toolkit', tag: '療法',  variant: 'amber', desc: 'Trust my adaptability' },
 ];
 
 const CALM_CARDS = [
-  { tab: 'breathing', name: 'Deep Breathing',  tag: '呼吸', variant: 'sky',   cue: 'Regulate your nervous system' },
-  { tab: 'grounding', name: 'Grounding',       tag: '実感', variant: 'slate', cue: 'Reset your senses, narrate your story, or imbue in imagery' },
+  { tab: 'breathing', name: 'Deep Breathing',  tag: '呼吸', variant: 'sky',   cue: 'Regulate my nervous system' },
+  { tab: 'grounding', name: 'Grounding',       tag: '実感', variant: 'slate', cue: 'Reset my senses, narrate my story, or imbue in imagery' },
   { tab: 'tea',       name: 'Visitors with Tea', tag: '感情', variant: 'sage',  cue: 'Sit with what\'s visiting' },
-  { tab: 'pmr',       name: 'Muscle Relaxation',             tag: '弛緩', variant: 'amber', cue: 'Relax your physical body' },
+  { tab: 'pmr',       name: 'Muscle Relaxation',             tag: '弛緩', variant: 'amber', cue: 'Relax my physical body' },
 ];
 
 function renderCalm() {
