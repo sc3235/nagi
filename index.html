@@ -2182,13 +2182,14 @@ const PATTERNS = [
 const SLEEP_RANGES = [
   { id: 'morning', name: 'Morning', time: '6–8 am', items: [
     { id: 'm1', text: 'Sleep for 7.5 hours' },
-    { id: 'm2', text: 'Wake up at a consistent time' },
+    { id: 'm2', text: 'Wake up not too early' },
     { id: 'm3', text: 'Wake up feeling well rested' },
   ]},
   { id: 'day', name: 'Day', time: '8 am – 6 pm', items: [
     { id: 'd1', text: 'Expose to daylight' },
     { id: 'd2', text: 'No caffeine after 3pm' },
     { id: 'd3', text: 'No naps beyond a 20m power nap' },
+    { id: 'd4', text: 'Aerobic exercise 30m (3/week)' },
   ]},
   { id: 'evening', name: 'Evening', time: '6–10 pm', items: [
     { id: 'e1', text: 'No large meals 2h before bed' },
@@ -2197,10 +2198,11 @@ const SLEEP_RANGES = [
   ]},
   { id: 'night', name: 'Night', time: '10 pm – 6 am', items: [
     { id: 'e3', text: 'No screens (non-ebook) 30m before bed' },
+    { id: 'n6', text: 'Replace any activating thoughts with relaxing ones' },
     { id: 'n2', text: 'Dark and cool room and comfortable bed' },
-    { id: 'n5', text: 'Go to sleep at a consistent early time' },
+    { id: 'n5', text: 'Go to sleep early' },
     { id: 'n3', text: 'Ritual before bed', nice: true },
-    { id: 'n4', text: 'Relax before bed', nice: true },
+    { id: 'n4', text: 'Relax before bed; replace activating thoughts with calming thoughts', nice: true },
   ], tips: [
     'If anxious thoughts keep you awake, play an audiobook or podcast to replace them with neutral thoughts — keep screen light low.',
     'If you are still awake after 30 minutes, get up and do something relaxing in low light until you feel sleepy, then return to bed.',
@@ -4844,9 +4846,9 @@ document.querySelectorAll('#toolkit-tabs button').forEach(btn => {
 
 // ---------- Calm ----------
 const PMR_GROUPS = [
-  { name: 'Hands',     tense: 'Make a tight fist',                                    release: 'Release, palms open facing up' },
+  { name: 'Hands',     tense: 'Make a tight fist',                                    release: 'Release, palms open facing up, wiggle fingers' },
   { name: 'Forearms',  tense: 'Tighten forearm muscles',                              release: 'Release, let arms rest' },
-  { name: 'Biceps',    tense: 'Bend arms up toward shoulders, flex biceps',            release: 'Lower arms, release' },
+  { name: 'Biceps',    tense: 'Bend arms up toward shoulders, flex biceps',            release: 'Lower arms, release, shake arms' },
   { name: 'Shoulders', tense: 'Shrug shoulders up toward ears',                        release: 'Release, let shoulders drop' },
   { name: 'Forehead',  tense: 'Furrow brows tightly',                                 release: 'Release, smooth forehead' },
   { name: 'Mouth',     tense: 'Clench jaw, press tongue to teeth, seal lips',          release: 'Stretch mouth wide open, then relax tongue and lips' },
@@ -4854,9 +4856,9 @@ const PMR_GROUPS = [
   { name: 'Chest',     tense: 'Pull shoulder blades together, push chest out',         release: 'Release, let shoulders fall forward naturally' },
   { name: 'Stomach',   tense: 'Tighten stomach as if expecting a punch',               release: 'Release, let belly go soft' },
   { name: 'Buttocks',  tense: 'Clench buttock muscles',                                release: 'Release, sink into your seat' },
-  { name: 'Calves',    tense: 'Push heels down while lifting toes up',                 release: 'Stretch legs out, release' },
   { name: 'Thighs',    tense: 'Press feet into floor, tighten thighs',                 release: 'Stretch legs out, release' },
-  { name: 'Feet',      tense: 'Curl toes downward tightly',                            release: 'Wiggle toes freely, release' },
+  { name: 'Calves',    tense: 'Push heels down while lifting toes up',                 release: 'Stretch legs out, release' },
+  { name: 'Feet',      tense: 'Curl toes',                            release: 'Wiggle toes, release' },
 ];
 
 const BEACH_SCRIPT = [
@@ -5397,11 +5399,11 @@ function renderPmr() {
   const relaxSec = metaStore.pmrRelaxSec || PMR_RELAX_DEFAULT;
   panel.innerHTML = `
     <div class="calm-heading">Progressive Muscle Relaxation</div>
-    <p class="calm-sub">Tense each muscle group, then release and observe the contrast. Adjust durations below.</p>
+    <p class="calm-sub">For each muscle group, tense and then release. Observe how you feel.</p>
     <div class="pmr-dur-row">
       <div class="pmr-dur-item">
         <div class="pmr-dur-label">Tense <span id="pmr-tense-val">${tenseSec}s</span></div>
-        <input class="pmr-dur-slider" id="pmr-tense-slider" type="range" min="3" max="5" step="1" value="${tenseSec}">
+        <input class="pmr-dur-slider" id="pmr-tense-slider" type="range" min="4" max="8" step="2" value="${tenseSec}">
       </div>
       <div class="pmr-dur-item">
         <div class="pmr-dur-label">Relax <span id="pmr-relax-val">${relaxSec}s</span></div>
