@@ -1913,6 +1913,31 @@
     text-transform: uppercase; color: var(--ink-faint); margin: 16px 0 8px;
   }
   .sleep-edit-group-label:first-child { margin-top: 4px; }
+  /* ---------- Chart panels ---------- */
+  .chart-range-row {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-dim);
+    margin-bottom: 20px;
+  }
+  .chart-date-input {
+    font-family: var(--mono); font-size: 12px;
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 5px 8px; background: var(--bg-card); color: var(--ink);
+  }
+  .chart-panel {
+    background: var(--bg-elev); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 16px;
+  }
+  .chart-panel-title {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-faint); margin-bottom: 12px;
+  }
+  .chart-metric-select {
+    font-family: var(--mono); font-size: 12px;
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 5px 8px; background: var(--bg-card); color: var(--ink);
+    width: 100%; margin-bottom: 12px;
+  }
 </style>
 </head>
 <body>
@@ -1924,10 +1949,12 @@
   <nav class="nav-tabs" id="nav-tabs" style="display:none">
     <button class="active" data-view="today">Today</button>
     <button data-view="history">History</button>
+    <button data-view="chart">Chart</button>
   </nav>
   <nav class="nav-tabs" id="sleep-tabs" style="display:none">
     <button class="active" data-stab="today">Today</button>
     <button data-stab="history">History</button>
+    <button data-stab="chart">Chart</button>
   </nav>
   <nav class="nav-tabs" id="calm-tabs" style="display:none">
     <button class="active" data-ctab="main">Calm</button>
@@ -1949,6 +1976,9 @@
   <section class="view" id="view-history">
     <div id="history-content" class="loading">Loading…</div>
   </section>
+  <section class="view" id="view-chart">
+    <div id="chart-content"></div>
+  </section>
   <section class="view" id="view-settings">
     <div id="settings-content" class="loading">Loading…</div>
   </section>
@@ -1965,6 +1995,7 @@
 
 <div class="saved-pill" id="saved-pill">saved</div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // ---------- Symptoms (Hamilton Anxiety Rating Scale, 0–3 per item) ----------
 const SYMPTOMS = [
@@ -1990,7 +2021,7 @@ const SYMPTOMS = [
   { group: 'Feelings',   name: 'Fears',             desc: 'being alone, crowds, animals, traffic, illness',                           optional: true  },
 ];
 
-// Per-button labels shown in rate rows (indexed 0-3). severityLabel() maps an avg score to a different vocabulary.
+// Per-button labels shown in rate rows (indexed 0-3). severityLabel() maps a total sum to a severity category.
 const SCORE_LABELS = ['none', 'mild', 'mod', 'severe'];
 const PRIMARY_COUNT   = SYMPTOMS.filter(s => !s.optional).length; // 8
 const SECONDARY_COUNT = SYMPTOMS.filter(s =>  s.optional).length; // 6
@@ -2215,6 +2246,10 @@ const SLEEP_ITEM_COUNT = SLEEP_RANGES.reduce((n, r) => n + r.items.filter(it => 
 let metaStore, hamaStore, calmStore, sleepStore;
 
 let sleepState = { tab: 'today', rangeIdx: 0, dayOffset: 0, editId: null };
+let hamaChartState  = { startDate: null, endDate: null, metric: 0 };
+let sleepChartState = { startDate: null, endDate: null, metric: null };
+let _hamaLineChart = null, _hamaBarChart = null;
+let _sleepLineChart = null, _sleepBarChart = null;
 
 // ---------- Load / Persist ----------
 const STORAGE_FULL_MSG = 'Could not save. Your browser storage may be full.';
@@ -2289,18 +2324,18 @@ const fmtDate = (key) => {
 };
 const daysBetween = (a, b) => Math.floor((b - a) / (1000*60*60*24));
 
-function severityLabel(avg) {
-  if (avg == null || isNaN(avg)) return null;
-  if (avg < 0.5) return 'fair';
-  if (avg < 1.5) return 'mild';
-  if (avg < 2.5) return 'moderate';
+function severityLabel(sum) {
+  if (sum == null || isNaN(sum)) return null;
+  if (sum <= 3) return 'fair';
+  if (sum <= 6) return 'mild';
+  if (sum <= 9) return 'moderate';
   return 'severe';
 }
-function severityClass(avg) {
-  if (avg == null || isNaN(avg)) return '';
-  if (avg < 0.5) return 's-none';
-  if (avg < 1.5) return 's-mild';
-  if (avg < 2.5) return 's-mod';
+function severityClass(sum) {
+  if (sum == null || isNaN(sum)) return '';
+  if (sum <= 3) return 's-none';
+  if (sum <= 6) return 's-mild';
+  if (sum <= 9) return 's-mod';
   return 's-sev';
 }
 function escapeHtml(s) {
@@ -2312,6 +2347,43 @@ const scrollTopSoon = () => requestAnimationFrame(() => {
   document.documentElement.scrollTop = 0;
   document.body.scrollTop = 0;
 });
+function dateRange(start, end) {
+  const dates = [];
+  const d = new Date(start + 'T00:00:00');
+  const last = new Date(end + 'T00:00:00');
+  while (d <= last) { dates.push(dateKey(d)); d.setDate(d.getDate() + 1); }
+  return dates;
+}
+function fmtDateShort(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m-1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+function chartDefaultDates(state) {
+  if (!state.endDate) {
+    state.endDate = todayKey();
+    const d = new Date(); d.setMonth(d.getMonth() - 1);
+    state.startDate = dateKey(d);
+  }
+}
+function chartBaseOptions(yMax, yStep) {
+  const yTicks = { font: { family: 'JetBrains Mono', size: 10 }, color: '#92A3B4' };
+  if (yStep !== undefined) yTicks.stepSize = yStep;
+  return {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: {
+        ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#92A3B4', maxRotation: 45, autoSkip: true, maxTicksLimit: 15 },
+        grid: { color: 'rgba(195,207,217,0.3)' }
+      },
+      y: {
+        min: 0, max: yMax,
+        ticks: yTicks,
+        grid: { color: 'rgba(195,207,217,0.3)' }
+      }
+    }
+  };
+}
 
 // ---------- HAMA helpers ----------
 function renderDotGrid(ratings) {
@@ -2372,9 +2444,9 @@ function renderToday() {
   const allSymptoms = SYMPTOMS.map((s, i) => ({ ...s, index: i }));
   const ratedValues = entry.ratings.filter(r => r != null);
   const ratedCount = ratedValues.length;
-  const todayAvg = ratedCount ? ratedValues.reduce((a,b) => a+b, 0) / ratedCount : null;
-  const sClass = severityClass(todayAvg);
-  const sevLabel = severityLabel(todayAvg);
+  const todaySum = ratedCount ? entry.ratings.reduce((s, r) => s + (r ?? 0), 0) : null;
+  const sClass = severityClass(todaySum);
+  const sevLabel = severityLabel(todaySum);
   const showNudge = shouldShowNudge();
 
   const symptomGroups = [...new Set(SYMPTOMS.map(s => s.group))];
@@ -2424,7 +2496,7 @@ function renderToday() {
       </div>
       ${ratedCount > 0 ? `
         <div class="snapshot-bottom">
-          <span class="score-pill ${sClass}">${todayAvg.toFixed(1)} · ${sevLabel}</span>
+          <span class="score-pill ${sClass}">${todaySum} · ${sevLabel}</span>
           ${ratingPills(entry.ratings)}
         </div>
       ` : ''}
@@ -2494,9 +2566,9 @@ function renderHistory() {
     return;
   }
 
-  const allRatings = keys.flatMap(k => hamaStore.history[k].ratings.filter(r => r != null));
-  const avg = allRatings.length
-    ? (allRatings.reduce((a,b) => a+b, 0) / allRatings.length).toFixed(1)
+  const dailySums = keys.map(k => hamaStore.history[k].ratings.reduce((s, r) => s + (r ?? 0), 0));
+  const avg = dailySums.length
+    ? (dailySums.reduce((a,b) => a+b, 0) / dailySums.length).toFixed(1)
     : '—';
 
   const streak = streakFor(hamaStore.history, e => e.ratings.some(r => r != null));
@@ -2504,8 +2576,8 @@ function renderHistory() {
   const entriesHtml = keys.map(k => {
     const e = hamaStore.history[k];
     const valid = e.ratings.filter(r => r != null);
-    const dayAvg = valid.length ? valid.reduce((a,b) => a+b, 0) / valid.length : null;
-    const sev = severityLabel(dayAvg);
+    const daySum = valid.length ? e.ratings.reduce((s, r) => s + (r ?? 0), 0) : null;
+    const sev = severityLabel(daySum);
 
     if (editState.key === k) {
       return `
@@ -2535,7 +2607,7 @@ function renderHistory() {
       `;
     }
 
-    const dayClass = severityClass(dayAvg);
+    const dayClass = severityClass(daySum);
     return `
       <div class="day-entry" data-key="${k}">
         <div class="day-head">
@@ -2550,7 +2622,7 @@ function renderHistory() {
         </div>
         ${dayAvg != null ? `
           <div class="snapshot-bottom">
-            <span class="score-pill ${dayClass}">${dayAvg.toFixed(1)} · ${sev}</span>
+            <span class="score-pill ${dayClass}">${daySum} · ${sev}</span>
             ${ratingPills(e.ratings)}
           </div>
         ` : ''}
@@ -2565,7 +2637,7 @@ function renderHistory() {
     <div class="history-stats">
       <div class="stat"><div class="stat-val">${streak}<em>.</em></div><div class="stat-label">Streak</div></div>
       <div class="stat"><div class="stat-val">${keys.length}<em>.</em></div><div class="stat-label">Check-ins</div></div>
-      <div class="stat"><div class="stat-val">${avg}<em>.</em></div><div class="stat-label">Avg score</div></div>
+      <div class="stat"><div class="stat-val">${avg}<em>.</em></div><div class="stat-label">Avg total</div></div>
     </div>
     ${entriesHtml}
   `;
@@ -4422,13 +4494,13 @@ function renderHome() {
   const today = todayKey();
   const todayEntry = hamaStore.history[today];
   const rated = todayEntry ? todayEntry.ratings.filter(r => r != null) : [];
-  const todayAvg = rated.length ? rated.reduce((a,b) => a+b, 0) / rated.length : null;
-  const sClass = severityClass(todayAvg);
+  const todaySum = rated.length ? todayEntry.ratings.reduce((s, r) => s + (r ?? 0), 0) : null;
+  const sClass = severityClass(todaySum);
 
   const streak = streakFor(hamaStore.history, e => e.ratings.some(r => r != null));
 
   const dateStr = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-  const todayAvgStr = todayAvg != null ? `${todayAvg.toFixed(1)} · ${severityLabel(todayAvg)}` : null;
+  const todayAvgStr = todaySum != null ? `${todaySum} · ${severityLabel(todaySum)}` : null;
 
   const todayRatings = todayEntry ? todayEntry.ratings : [];
   const hamPills = `
@@ -4542,7 +4614,8 @@ function renderSleep() {
   const container = document.getElementById('sleep-content');
   container.innerHTML = `<div id="sleep-panel"></div>`;
   if (sleepState.tab === 'today') renderSleepChecklist();
-  else renderSleepHistory();
+  else if (sleepState.tab === 'history') renderSleepHistory();
+  else renderSleepChart();
 }
 
 function renderSleepChecklist() {
@@ -4710,6 +4783,110 @@ function sleepHistoryEntryHtml(key) {
     </div>`;
 }
 
+// ---------- HAM-A Chart ----------
+function renderHamaChart() {
+  if (_hamaLineChart) { _hamaLineChart.destroy(); _hamaLineChart = null; }
+  if (_hamaBarChart)  { _hamaBarChart.destroy();  _hamaBarChart = null; }
+  chartDefaultDates(hamaChartState);
+  const mi = hamaChartState.metric;
+  const metricOpts = SYMPTOMS.map((s, i) =>
+    `<option value="${i}"${i === mi ? ' selected' : ''}>${escapeHtml(s.name)}</option>`
+  ).join('');
+  document.getElementById('chart-content').innerHTML = `
+    <div class="date-line date-line-center">HAM-A</div>
+    <h1 class="greeting">Charts<em>.</em></h1>
+    <div class="chart-range-row">
+      <input type="date" class="chart-date-input" id="hama-cs" value="${hamaChartState.startDate}">
+      <span>to</span>
+      <input type="date" class="chart-date-input" id="hama-ce" value="${hamaChartState.endDate}">
+    </div>
+    <div class="chart-panel">
+      <div class="chart-panel-title">Total score by day</div>
+      <canvas id="hama-lc"></canvas>
+    </div>
+    <div class="chart-panel">
+      <select class="chart-metric-select" id="hama-ms">${metricOpts}</select>
+      <canvas id="hama-bc"></canvas>
+    </div>`;
+  document.getElementById('hama-cs').addEventListener('change', e => { hamaChartState.startDate = e.target.value; renderHamaChart(); });
+  document.getElementById('hama-ce').addEventListener('change', e => { hamaChartState.endDate = e.target.value; renderHamaChart(); });
+  document.getElementById('hama-ms').addEventListener('change', e => { hamaChartState.metric = +e.target.value; renderHamaChart(); });
+  const dates = dateRange(hamaChartState.startDate, hamaChartState.endDate);
+  const labels = dates.map(fmtDateShort);
+  const lineData = dates.map(d => {
+    const e = hamaStore.history[d];
+    if (!e || !e.ratings.some(r => r != null)) return null;
+    return e.ratings.reduce((s, r) => s + (r ?? 0), 0);
+  });
+  const barData = dates.map(d => {
+    const e = hamaStore.history[d];
+    if (!e || e.ratings[mi] == null) return null;
+    return e.ratings[mi];
+  });
+  _hamaLineChart = new Chart(document.getElementById('hama-lc'), {
+    type: 'line',
+    data: { labels, datasets: [{ data: lineData, borderColor: '#3D5870', backgroundColor: 'rgba(61,88,112,0.08)', fill: true, tension: 0.3, pointRadius: 3, spanGaps: false }] },
+    options: chartBaseOptions(42)
+  });
+  _hamaBarChart = new Chart(document.getElementById('hama-bc'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: barData, backgroundColor: 'rgba(61,88,112,0.55)', borderRadius: 4 }] },
+    options: chartBaseOptions(3, 1)
+  });
+}
+
+// ---------- Sleep Chart ----------
+function renderSleepChart() {
+  if (_sleepLineChart) { _sleepLineChart.destroy(); _sleepLineChart = null; }
+  if (_sleepBarChart)  { _sleepBarChart.destroy();  _sleepBarChart = null; }
+  chartDefaultDates(sleepChartState);
+  if (!sleepChartState.metric) sleepChartState.metric = SLEEP_RANGES[0].items[0].id;
+  const selId = sleepChartState.metric;
+  const itemOpts = SLEEP_RANGES.flatMap(r => r.items.map(it =>
+    `<option value="${it.id}"${it.id === selId ? ' selected' : ''}>${escapeHtml(r.name + ': ' + it.text)}</option>`
+  )).join('');
+  document.getElementById('sleep-panel').innerHTML = `
+    <div class="date-line date-line-center">Sleep</div>
+    <h1 class="greeting">Charts<em>.</em></h1>
+    <div class="chart-range-row">
+      <input type="date" class="chart-date-input" id="sl-cs" value="${sleepChartState.startDate}">
+      <span>to</span>
+      <input type="date" class="chart-date-input" id="sl-ce" value="${sleepChartState.endDate}">
+    </div>
+    <div class="chart-panel">
+      <div class="chart-panel-title">Tasks accomplished by day</div>
+      <canvas id="sl-lc"></canvas>
+    </div>
+    <div class="chart-panel">
+      <select class="chart-metric-select" id="sl-ms">${itemOpts}</select>
+      <canvas id="sl-bc"></canvas>
+    </div>`;
+  document.getElementById('sl-cs').addEventListener('change', e => { sleepChartState.startDate = e.target.value; renderSleepChart(); });
+  document.getElementById('sl-ce').addEventListener('change', e => { sleepChartState.endDate = e.target.value; renderSleepChart(); });
+  document.getElementById('sl-ms').addEventListener('change', e => { sleepChartState.metric = e.target.value; renderSleepChart(); });
+  const dates = dateRange(sleepChartState.startDate, sleepChartState.endDate);
+  const labels = dates.map(fmtDateShort);
+  const lineData = dates.map(d => {
+    const rec = sleepStore.history[d];
+    return rec ? sleepMetCount(rec) : null;
+  });
+  const barData = dates.map(d => {
+    const rec = sleepStore.history[d];
+    if (!rec) return null;
+    return sleepCheckState(rec, { id: selId }) ? 1 : 0;
+  });
+  _sleepLineChart = new Chart(document.getElementById('sl-lc'), {
+    type: 'line',
+    data: { labels, datasets: [{ data: lineData, borderColor: '#5298BC', backgroundColor: 'rgba(82,152,188,0.1)', fill: true, tension: 0.3, pointRadius: 3, spanGaps: false }] },
+    options: chartBaseOptions(SLEEP_ITEM_COUNT)
+  });
+  _sleepBarChart = new Chart(document.getElementById('sl-bc'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: barData, backgroundColor: barData.map(v => v === 1 ? 'rgba(82,152,188,0.65)' : 'rgba(195,207,217,0.5)'), borderRadius: 4 }] },
+    options: chartBaseOptions(1, 1)
+  });
+}
+
 // ---------- Screen routing ----------
 function showScreen(name) {
   if (currentScreen === 'calm' && name !== 'calm') {
@@ -4814,6 +4991,7 @@ document.querySelectorAll('#nav-tabs button').forEach(btn => {
     document.getElementById(`view-${view}`).classList.add('active');
     if (view === 'today')   renderToday();
     if (view === 'history') renderHistory();
+    if (view === 'chart')   renderHamaChart();
     scrollTopSoon();
   });
 });
