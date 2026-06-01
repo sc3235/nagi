@@ -1938,6 +1938,19 @@
     padding: 5px 8px; background: var(--bg-card); color: var(--ink);
     width: 100%; margin-bottom: 12px;
   }
+  .chart-view-toggle {
+    display: flex; gap: 4px; padding: 4px;
+    background: var(--bg-elev); border-radius: 999px;
+    border: 1px solid var(--line); width: fit-content;
+    margin-bottom: 16px;
+  }
+  .chart-view-toggle button {
+    padding: 4px 12px; border-radius: 999px;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--ink-dim); transition: all 0.2s;
+  }
+  .hama-chart-toggle button.active  { background: var(--slate); color: var(--paper); }
+  .sleep-chart-toggle button.active { background: var(--sky);   color: var(--paper); }
 </style>
 </head>
 <body>
@@ -2246,8 +2259,8 @@ const SLEEP_ITEM_COUNT = SLEEP_RANGES.reduce((n, r) => n + r.items.filter(it => 
 let metaStore, hamaStore, calmStore, sleepStore;
 
 let sleepState = { tab: 'today', rangeIdx: 0, dayOffset: 0, editId: null };
-let hamaChartState  = { startDate: null, endDate: null, metric: 0 };
-let sleepChartState = { startDate: null, endDate: null, metric: null };
+let hamaChartState  = { startDate: null, endDate: null, metric: 0, byWeekday: false };
+let sleepChartState = { startDate: null, endDate: null, metric: null, byWeekday: false };
 let _hamaLineChart = null, _hamaBarChart = null;
 let _sleepLineChart = null, _sleepBarChart = null;
 
@@ -2364,6 +2377,18 @@ function chartDefaultDates(state) {
     const d = new Date(); d.setMonth(d.getMonth() - 1);
     state.startDate = dateKey(d);
   }
+}
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+function weekdayAverages(dates, getValue) {
+  const sums = Array(7).fill(0), counts = Array(7).fill(0);
+  for (const d of dates) {
+    const v = getValue(d);
+    if (v == null) continue;
+    const jsDay = new Date(d + 'T00:00:00').getDay();
+    const idx = jsDay === 0 ? 6 : jsDay - 1; // Mon=0 … Sun=6
+    sums[idx] += v; counts[idx]++;
+  }
+  return sums.map((s, i) => counts[i] > 0 ? s / counts[i] : null);
 }
 function chartBaseOptions(yMax, yStep) {
   const yTicks = { font: { family: 'JetBrains Mono', size: 10 }, color: '#92A3B4' };
@@ -2620,7 +2645,7 @@ function renderHistory() {
         <div class="day-dots">
           ${renderDotGrid(e.ratings)}
         </div>
-        ${dayAvg != null ? `
+        ${daySum != null ? `
           <div class="snapshot-bottom">
             <span class="score-pill ${dayClass}">${daySum} · ${sev}</span>
             ${ratingPills(e.ratings)}
@@ -4500,11 +4525,11 @@ function renderHome() {
   const streak = streakFor(hamaStore.history, e => e.ratings.some(r => r != null));
 
   const dateStr = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-  const todayAvgStr = todaySum != null ? `${todaySum} · ${severityLabel(todaySum)}` : null;
+  const todaySumStr = todaySum != null ? `${todaySum} · ${severityLabel(todaySum)}` : null;
 
   const todayRatings = todayEntry ? todayEntry.ratings : [];
   const hamPills = `
-    ${todayAvgStr ? `<span class="score-pill ${sClass}">${todayAvgStr}</span>` : ''}
+    ${todaySumStr ? `<span class="score-pill ${sClass}">${todaySumStr}</span>` : ''}
     ${rated.length > 0 ? ratingPills(todayRatings) : '<span class="score-pill">no check-in</span>'}
     <span class="score-pill">${streak} day${streak !== 1 ? 's' : ''} streak</span>`;
 
@@ -4789,6 +4814,7 @@ function renderHamaChart() {
   if (_hamaBarChart)  { _hamaBarChart.destroy();  _hamaBarChart = null; }
   chartDefaultDates(hamaChartState);
   const mi = hamaChartState.metric;
+  const bw = hamaChartState.byWeekday;
   const metricOpts = SYMPTOMS.map((s, i) =>
     `<option value="${i}"${i === mi ? ' selected' : ''}>${escapeHtml(s.name)}</option>`
   ).join('');
@@ -4800,8 +4826,12 @@ function renderHamaChart() {
       <span>to</span>
       <input type="date" class="chart-date-input" id="hama-ce" value="${hamaChartState.endDate}">
     </div>
+    <div class="chart-view-toggle hama-chart-toggle">
+      <button id="hama-daily" class="${!bw ? 'active' : ''}">Daily</button>
+      <button id="hama-wday"  class="${bw  ? 'active' : ''}">By weekday</button>
+    </div>
     <div class="chart-panel">
-      <div class="chart-panel-title">Total score by day</div>
+      <div class="chart-panel-title">Total score${bw ? ' avg' : ''} by ${bw ? 'weekday' : 'day'}</div>
       <canvas id="hama-lc"></canvas>
     </div>
     <div class="chart-panel">
@@ -4811,22 +4841,18 @@ function renderHamaChart() {
   document.getElementById('hama-cs').addEventListener('change', e => { hamaChartState.startDate = e.target.value; renderHamaChart(); });
   document.getElementById('hama-ce').addEventListener('change', e => { hamaChartState.endDate = e.target.value; renderHamaChart(); });
   document.getElementById('hama-ms').addEventListener('change', e => { hamaChartState.metric = +e.target.value; renderHamaChart(); });
+  document.getElementById('hama-daily').addEventListener('click', () => { hamaChartState.byWeekday = false; renderHamaChart(); });
+  document.getElementById('hama-wday').addEventListener('click',  () => { hamaChartState.byWeekday = true;  renderHamaChart(); });
   const dates = dateRange(hamaChartState.startDate, hamaChartState.endDate);
-  const labels = dates.map(fmtDateShort);
-  const lineData = dates.map(d => {
-    const e = hamaStore.history[d];
-    if (!e || !e.ratings.some(r => r != null)) return null;
-    return e.ratings.reduce((s, r) => s + (r ?? 0), 0);
-  });
-  const barData = dates.map(d => {
-    const e = hamaStore.history[d];
-    if (!e || e.ratings[mi] == null) return null;
-    return e.ratings[mi];
-  });
+  const getLineVal = d => { const e = hamaStore.history[d]; if (!e || !e.ratings.some(r => r != null)) return null; return e.ratings.reduce((s, r) => s + (r ?? 0), 0); };
+  const getBarVal  = d => { const e = hamaStore.history[d]; if (!e || e.ratings[mi] == null) return null; return e.ratings[mi]; };
+  const labels   = bw ? WEEKDAY_LABELS : dates.map(fmtDateShort);
+  const lineData = bw ? weekdayAverages(dates, getLineVal) : dates.map(getLineVal);
+  const barData  = bw ? weekdayAverages(dates, getBarVal)  : dates.map(getBarVal);
   _hamaLineChart = new Chart(document.getElementById('hama-lc'), {
     type: 'line',
     data: { labels, datasets: [{ data: lineData, borderColor: '#3D5870', backgroundColor: 'rgba(61,88,112,0.08)', fill: true, tension: 0.3, pointRadius: 3, spanGaps: false }] },
-    options: chartBaseOptions(42)
+    options: chartBaseOptions()
   });
   _hamaBarChart = new Chart(document.getElementById('hama-bc'), {
     type: 'bar',
@@ -4842,6 +4868,7 @@ function renderSleepChart() {
   chartDefaultDates(sleepChartState);
   if (!sleepChartState.metric) sleepChartState.metric = SLEEP_RANGES[0].items[0].id;
   const selId = sleepChartState.metric;
+  const bw = sleepChartState.byWeekday;
   const itemOpts = SLEEP_RANGES.flatMap(r => r.items.map(it =>
     `<option value="${it.id}"${it.id === selId ? ' selected' : ''}>${escapeHtml(r.name + ': ' + it.text)}</option>`
   )).join('');
@@ -4853,8 +4880,12 @@ function renderSleepChart() {
       <span>to</span>
       <input type="date" class="chart-date-input" id="sl-ce" value="${sleepChartState.endDate}">
     </div>
+    <div class="chart-view-toggle sleep-chart-toggle">
+      <button id="sl-daily" class="${!bw ? 'active' : ''}">Daily</button>
+      <button id="sl-wday"  class="${bw  ? 'active' : ''}">By weekday</button>
+    </div>
     <div class="chart-panel">
-      <div class="chart-panel-title">Tasks accomplished by day</div>
+      <div class="chart-panel-title">Tasks accomplished${bw ? ' avg' : ''} by ${bw ? 'weekday' : 'day'}</div>
       <canvas id="sl-lc"></canvas>
     </div>
     <div class="chart-panel">
@@ -4864,17 +4895,14 @@ function renderSleepChart() {
   document.getElementById('sl-cs').addEventListener('change', e => { sleepChartState.startDate = e.target.value; renderSleepChart(); });
   document.getElementById('sl-ce').addEventListener('change', e => { sleepChartState.endDate = e.target.value; renderSleepChart(); });
   document.getElementById('sl-ms').addEventListener('change', e => { sleepChartState.metric = e.target.value; renderSleepChart(); });
+  document.getElementById('sl-daily').addEventListener('click', () => { sleepChartState.byWeekday = false; renderSleepChart(); });
+  document.getElementById('sl-wday').addEventListener('click',  () => { sleepChartState.byWeekday = true;  renderSleepChart(); });
   const dates = dateRange(sleepChartState.startDate, sleepChartState.endDate);
-  const labels = dates.map(fmtDateShort);
-  const lineData = dates.map(d => {
-    const rec = sleepStore.history[d];
-    return rec ? sleepMetCount(rec) : null;
-  });
-  const barData = dates.map(d => {
-    const rec = sleepStore.history[d];
-    if (!rec) return null;
-    return sleepCheckState(rec, { id: selId }) ? 1 : 0;
-  });
+  const getLineVal = d => { const rec = sleepStore.history[d]; return rec ? sleepMetCount(rec) : null; };
+  const getBarVal  = d => { const rec = sleepStore.history[d]; if (!rec) return null; return sleepCheckState(rec, { id: selId }) ? 1 : 0; };
+  const labels   = bw ? WEEKDAY_LABELS : dates.map(fmtDateShort);
+  const lineData = bw ? weekdayAverages(dates, getLineVal) : dates.map(getLineVal);
+  const barData  = bw ? weekdayAverages(dates, getBarVal)  : dates.map(getBarVal);
   _sleepLineChart = new Chart(document.getElementById('sl-lc'), {
     type: 'line',
     data: { labels, datasets: [{ data: lineData, borderColor: '#5298BC', backgroundColor: 'rgba(82,152,188,0.1)', fill: true, tension: 0.3, pointRadius: 3, spanGaps: false }] },
@@ -4882,7 +4910,7 @@ function renderSleepChart() {
   });
   _sleepBarChart = new Chart(document.getElementById('sl-bc'), {
     type: 'bar',
-    data: { labels, datasets: [{ data: barData, backgroundColor: barData.map(v => v === 1 ? 'rgba(82,152,188,0.65)' : 'rgba(195,207,217,0.5)'), borderRadius: 4 }] },
+    data: { labels, datasets: [{ data: barData, backgroundColor: 'rgba(82,152,188,0.65)', borderRadius: 4 }] },
     options: chartBaseOptions(1, 1)
   });
 }
