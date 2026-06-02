@@ -2762,8 +2762,7 @@ function renderSettings() {
 
   container.innerHTML = `
     <div class="date-line">Configuration</div>
-    <h1 class="greeting">Options<em>.</em></h1>
-    <div class="section-label">Data</div>
+    <h1 class="greeting">Data<em>.</em></h1>
     <details class="help">
       <summary>Where does my data live?</summary>
       <div class="body">
@@ -2771,9 +2770,12 @@ function renderSettings() {
         <br><br>
         That's private and fast, but it has one risk: <strong>if you clear Safari data, switch phones, or your browser purges storage, it's gone.</strong> Backups protect against this.
         <br><br>
+        You can also connect a GitHub personal access token with <strong>gist</strong> scope to automatically back up to a private gist each day when you open the app. Create a token at <strong>github.com → Settings → Developer settings → Personal access tokens</strong> — only the <em>gist</em> permission is needed.
+        <br><br>
         Last backup: <strong>${lastBackupStr}</strong>
       </div>
     </details>
+    <div class="section-label" style="margin-top:16px">Local</div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <label class="file-label" style="flex:1;margin:0">
         Import (JSON)
@@ -2782,14 +2784,7 @@ function renderSettings() {
       <button class="action-btn" id="export-btn" style="flex:1;margin:0">Export (JSON)</button>
     </div>
     <button class="action-btn danger" id="wipe-btn">Delete all data</button>
-    <div class="section-label" style="margin-top:24px">Sync</div>
-    <details class="help">
-      <summary>Auto-backup to GitHub Gist</summary>
-      <div class="body">
-        Enter a GitHub personal access token with <strong>gist</strong> scope. Your data will be backed up to a private gist automatically each day when you open the app.<br><br>
-        Create a token at <strong>github.com → Settings → Developer settings → Personal access tokens</strong>. Only the <em>gist</em> permission is needed.
-      </div>
-    </details>
+    <div class="section-label" style="margin-top:16px">Remote</div>
     <div style="display:flex;gap:8px;margin-bottom:8px;align-items:stretch">
       <input type="password" id="gist-token-input" class="action-btn" placeholder="GitHub token (ghp_…)" style="flex:1;margin:0;font-family:monospace;font-size:13px" />
       <button class="action-btn" id="gist-connect-btn" style="flex:0 0 auto;margin:0;width:44px;font-size:18px" title="Connect">⇌</button>
@@ -2806,10 +2801,13 @@ function renderSettings() {
       </label>
     ` : ''}
     <div style="font-size:13px;padding:8px 0;color:var(--stone)">${(() => {
-      const sizeMB = (new Blob([JSON.stringify(buildExportData())]).size / 1048576).toFixed(2);
+      const bytes = new Blob([JSON.stringify(buildExportData())]).size;
+      const sizeMB = (bytes / 1048576).toFixed(2);
       const sizeStr = parseFloat(sizeMB) >= 9
         ? `<strong style="color:var(--red)">⚠ ${sizeMB} MB — near limit</strong>`
-        : `${sizeMB} MB`;
+        : parseFloat(sizeMB) < 0.01
+          ? `${(bytes / 1024).toFixed(1)} KB`
+          : `${sizeMB} MB`;
       if (!gistCfg.gistId) return `Local data: ${sizeStr} · not connected`;
       const when = gistCfg.lastGistAt
         ? new Date(gistCfg.lastGistAt).toLocaleString(undefined, { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' })
@@ -4817,7 +4815,7 @@ function renderHome() {
     </div>
     <div style="border-top:1px solid var(--line);margin:24px 0 14px;"></div>
     <div style="display:flex;justify-content:center">
-      <button class="action-btn" id="home-options-btn" style="width:auto;border-radius:999px;padding:7px 18px;font-size:13px;margin:0">Options</button>
+      <button class="action-btn" id="home-options-btn" style="width:auto;border-radius:999px;padding:7px 18px;font-size:13px;margin:0">Data</button>
     </div>
   `;
 
