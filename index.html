@@ -2739,7 +2739,7 @@ function renderSettings() {
     <div class="date-line">Configuration</div>
     <h1 class="greeting">Options<em>.</em></h1>
     <div class="section-label">Data</div>
-    <details class="help" open>
+    <details class="help">
       <summary>Where does my data live?</summary>
       <div class="body">
         Everything is stored in your browser's <strong>localStorage</strong> — only on this device, in this browser. Nothing leaves your phone.
@@ -2749,11 +2749,13 @@ function renderSettings() {
         Last backup: <strong>${lastBackupStr}</strong>
       </div>
     </details>
-    <label class="file-label">
-      Import data (JSON)
-      <input type="file" id="import-input" accept="application/json,.json" />
-    </label>
-    <button class="action-btn" id="export-btn">Export data (JSON)</button>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <label class="file-label" style="flex:1;margin:0">
+        Import data (JSON)
+        <input type="file" id="import-input" accept="application/json,.json" />
+      </label>
+      <button class="action-btn" id="export-btn" style="flex:1;margin:0">Export data (JSON)</button>
+    </div>
     <button class="action-btn danger" id="wipe-btn">Delete all data</button>
     <div class="section-label" style="margin-top:24px">Gist Backup</div>
     <details class="help">
@@ -2763,8 +2765,10 @@ function renderSettings() {
         Create a token at <strong>github.com → Settings → Developer settings → Personal access tokens</strong>. Only the <em>gist</em> permission is needed.
       </div>
     </details>
-    <input type="password" id="gist-token-input" class="action-btn" placeholder="GitHub token (ghp_…)" style="font-family:monospace;font-size:13px" />
-    <button class="action-btn" id="gist-save-token-btn">Save token</button>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input type="password" id="gist-token-input" class="action-btn" placeholder="GitHub token (ghp_…)" style="flex:1;margin:0;font-family:monospace;font-size:13px" />
+      <button class="action-btn" id="gist-save-token-btn" style="flex:0 0 auto;margin:0;width:auto;padding-left:16px;padding-right:16px">Save token</button>
+    </div>
     <button class="action-btn" id="gist-backup-btn" ${(() => { const c = loadGistConfig(); return c.token ? '' : 'disabled'; })()}>Backup to Gist now</button>
     ${(() => {
       const c = loadGistConfig();
