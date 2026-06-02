@@ -2050,6 +2050,7 @@ const TK_THOUGHT_KEY   = 'nagi.toolkit.thought.v1';
 const TK_SITUATION_KEY = 'nagi.toolkit.situation.v1';
 const TK_VALUES_KEY    = 'nagi.toolkit.values.v1';
 const TK_EXPOSURE_KEY  = 'nagi.toolkit.exposure.v1';
+const GIST_KEY         = 'nagi.gist.v1';
 
 const PATTERNS = [
   {
@@ -2306,6 +2307,13 @@ function loadTkValues()        { try { return JSON.parse(localStorage.getItem(TK
 function saveTkValues(arr)     { try { localStorage.setItem(TK_VALUES_KEY,    JSON.stringify(arr)); } catch(e){} }
 function loadTkExp()           { try { return JSON.parse(localStorage.getItem(TK_EXPOSURE_KEY)  || '[]'); } catch(e){ return []; } }
 function saveTkExp(arr)        { try { localStorage.setItem(TK_EXPOSURE_KEY,  JSON.stringify(arr)); } catch(e){} }
+
+function loadGistConfig() {
+  try { return JSON.parse(localStorage.getItem(GIST_KEY) || '{}'); } catch(e) { return {}; }
+}
+function saveGistConfig(cfg) {
+  try { localStorage.setItem(GIST_KEY, JSON.stringify(cfg)); } catch(e) {}
+}
 
 function genId(prefix) { return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
@@ -2747,12 +2755,54 @@ function renderSettings() {
     </label>
     <button class="action-btn" id="export-btn">Export data (JSON)</button>
     <button class="action-btn danger" id="wipe-btn">Delete all data</button>
+    <div class="section-label" style="margin-top:24px">Gist Backup</div>
+    <details class="help">
+      <summary>Auto-backup to GitHub Gist</summary>
+      <div class="body">
+        Enter a GitHub personal access token with <strong>gist</strong> scope. Your data will be backed up to a private gist and refreshed automatically each day when you open the app.<br><br>
+        Create a token at <strong>github.com → Settings → Developer settings → Personal access tokens</strong>. Only the <em>gist</em> permission is needed.
+      </div>
+    </details>
+    <input type="password" id="gist-token-input" class="action-btn" placeholder="GitHub token (ghp_…)" style="font-family:monospace;font-size:13px" />
+    <button class="action-btn" id="gist-save-token-btn">Save token</button>
+    <button class="action-btn" id="gist-backup-btn" ${(() => { const c = loadGistConfig(); return c.token ? '' : 'disabled'; })()}>Backup to Gist now</button>
+    ${(() => {
+      const c = loadGistConfig();
+      const sizeMB = (new Blob([JSON.stringify(buildExportData())]).size / 1048576).toFixed(2);
+      const sizeWarn = sizeMB >= 9 ? ` <strong style="color:var(--red)">⚠ ${sizeMB} MB — near 10 MB limit</strong>` : ` (${sizeMB} MB)`;
+      if (!c.gistId) return `<div class="help" style="font-size:13px;padding:8px 0;color:var(--stone)">Backup size:${sizeWarn}</div>`;
+      const when = c.lastGistAt ? new Date(c.lastGistAt).toLocaleString(undefined, { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : 'unknown';
+      return `<div class="help" style="font-size:13px;padding:8px 0;color:var(--stone)">Last gist backup: ${when}${sizeWarn}</div>`;
+    })()}
   `;
 
   container.querySelector('#export-btn').addEventListener('click', () => {
     exportJSON();
     metaStore.lastBackup = new Date().toISOString();
     persistMeta(); renderSettings();
+  });
+
+  const tokenInput = container.querySelector('#gist-token-input');
+  const gistCfgNow = loadGistConfig();
+  if (gistCfgNow.token) tokenInput.value = gistCfgNow.token;
+
+  container.querySelector('#gist-save-token-btn').addEventListener('click', () => {
+    const token = tokenInput.value.trim();
+    if (!token) { alert('Paste a GitHub token first.'); return; }
+    const cfg = loadGistConfig();
+    cfg.token = token;
+    saveGistConfig(cfg);
+    renderSettings();
+    showSaved('token saved');
+  });
+
+  container.querySelector('#gist-backup-btn').addEventListener('click', async () => {
+    const btn = container.querySelector('#gist-backup-btn');
+    btn.disabled = true;
+    btn.textContent = 'Backing up…';
+    const ok = await backupToGist({ silent: false });
+    if (ok) { showSaved('backed up to gist'); renderSettings(); }
+    else { btn.disabled = false; btn.textContent = 'Backup to Gist now'; }
   });
   container.querySelector('#import-input').addEventListener('change', async e => {
     const file = e.target.files[0];
@@ -2790,8 +2840,8 @@ function renderSettings() {
 }
 
 // ---------- Export / Import ----------
-function exportJSON() {
-  const data = {
+function buildExportData() {
+  return {
     meta: metaStore,
     hama: hamaStore.history,
     sleep: sleepStore.history,
@@ -2805,7 +2855,77 @@ function exportJSON() {
     exportedAt: new Date().toISOString(),
     version: 5,
   };
+}
+function exportJSON() {
+  const data = buildExportData();
   download(`nagi-${todayKey()}.json`, JSON.stringify(data, null, 2), 'application/json');
+}
+
+async function backupToGist({ silent = false } = {}) {
+  const cfg = loadGistConfig();
+  if (!cfg.token) {
+    if (!silent) alert('No GitHub token configured. Add one in Settings → Gist Backup.');
+    return false;
+  }
+  const payload = JSON.stringify(buildExportData(), null, 2);
+  const sizeMB = new Blob([payload]).size / 1048576;
+  if (sizeMB >= 9) {
+    if (!silent) alert(`Your backup is ${sizeMB.toFixed(1)} MB — close to GitHub Gist's 10 MB limit. Consider exporting and clearing old data.`);
+    else showSaved('⚠ backup near limit');
+  }
+  const body = {
+    description: 'nagi backup',
+    public: false,
+    files: { 'nagi-backup.json': { content: payload } },
+  };
+  const headers = {
+    'Authorization': `token ${cfg.token}`,
+    'Accept': 'application/vnd.github+json',
+    'Content-Type': 'application/json',
+  };
+  try {
+    let resp;
+    if (cfg.gistId) {
+      resp = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
+        method: 'PATCH', headers, body: JSON.stringify(body),
+      });
+      if (resp.status === 404) {
+        cfg.gistId = null;
+        resp = await fetch('https://api.github.com/gists', {
+          method: 'POST', headers, body: JSON.stringify(body),
+        });
+      }
+    } else {
+      resp = await fetch('https://api.github.com/gists', {
+        method: 'POST', headers, body: JSON.stringify(body),
+      });
+    }
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      if (!silent) alert(`Gist backup failed: ${err.message || resp.status}`);
+      return false;
+    }
+    const result = await resp.json();
+    cfg.gistId = result.id;
+    cfg.lastGistAt = new Date().toISOString();
+    saveGistConfig(cfg);
+    metaStore.lastBackup = cfg.lastGistAt;
+    persistMeta();
+    return true;
+  } catch(e) {
+    if (!silent) alert(`Gist backup failed: ${e.message}`);
+    return false;
+  }
+}
+
+async function maybeAutoBackupToGist() {
+  const cfg = loadGistConfig();
+  if (!cfg.token) return;
+  const last = cfg.lastGistAt ? new Date(cfg.lastGistAt) : null;
+  const hoursAgo = last ? (Date.now() - last.getTime()) / 36e5 : Infinity;
+  if (hoursAgo < 23) return;
+  const ok = await backupToGist({ silent: true });
+  if (ok) showSaved('backed up');
 }
 function download(filename, content, mime) {
   const url = URL.createObjectURL(new Blob([content], { type: mime || 'text/plain' }));
@@ -5704,6 +5824,7 @@ loadHama();
 loadCalm();
 loadSleep();
 showScreen('home');
+maybeAutoBackupToGist();
 
 // Prevent iOS Safari from zooming in on input/textarea focus
 (function() {
