@@ -1002,6 +1002,16 @@
   .back-btn:active { opacity: 0.45; }
   .back-btn.hidden { display: none !important; }
 
+  .home-footer-link {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.09em;
+    color: var(--ink-faint);
+    padding: 4px 0;
+    transition: color 0.15s;
+  }
+  .home-footer-link:hover { color: var(--ink-dim); }
+
   .home-hero { padding: 4px 0 26px; }
   .home-tagline {
     font-size: 34px;
@@ -2778,12 +2788,12 @@ function renderSettings() {
     <div class="section-label" style="margin-top:16px">Local</div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <label class="file-label" style="flex:1;margin:0">
-        Import (JSON)
+        ↓ Import (JSON)
         <input type="file" id="import-input" accept="application/json,.json" />
       </label>
-      <button class="action-btn" id="export-btn" style="flex:1;margin:0">Export (JSON)</button>
+      <button class="action-btn" id="export-btn" style="flex:1;margin:0">↑ Export (JSON)</button>
     </div>
-    <button class="action-btn danger" id="wipe-btn">Delete all data</button>
+    <button class="action-btn danger" id="wipe-btn" style="width:auto;padding:6px 10px;font-size:12px;display:block;margin:0 auto 8px;opacity:0.65">Delete all data</button>
     <div class="section-label" style="margin-top:16px">Remote</div>
     <div style="display:flex;gap:8px;margin-bottom:8px;align-items:stretch">
       <input type="password" id="gist-token-input" class="action-btn" placeholder="GitHub token (ghp_…)" style="flex:1;margin:0;font-family:monospace;font-size:13px" />
@@ -2791,11 +2801,11 @@ function renderSettings() {
       <button class="action-btn" id="gist-disconnect-btn" style="flex:0 0 auto;margin:0;width:44px;font-size:18px" ${gistCfg.token ? '' : 'disabled'} title="Disconnect">✕</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
-      <button class="action-btn" id="gist-upload-btn" style="flex:1;margin:0${gistCfg.gistId && !gistCfg.isUploadDevice ? ';opacity:0.4' : ''}" ${!gistCfg.gistId ? 'disabled' : ''}>↑ Upload</button>
       <button class="action-btn" id="gist-download-btn" style="flex:1;margin:0" ${!gistCfg.gistId ? 'disabled' : ''}>↓ Download</button>
+      <button class="action-btn" id="gist-upload-btn" style="flex:1;margin:0${gistCfg.gistId && !gistCfg.isUploadDevice ? ';opacity:0.4' : ''}" ${!gistCfg.gistId ? 'disabled' : ''}>↑ Upload</button>
     </div>
     ${gistCfg.gistId ? `
-      <label style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14px;font-family:var(--mono);color:var(--ink);cursor:pointer">
+      <label style="display:flex;align-items:center;justify-content:center;gap:10px;padding:8px 0;font-size:14px;font-family:var(--mono);color:var(--ink);cursor:pointer">
         <input type="checkbox" id="gist-upload-device" ${gistCfg.isUploadDevice ? 'checked' : ''} />
         This is my upload device
       </label>
@@ -4813,9 +4823,8 @@ function renderHome() {
         </button>`;
       }).join('')}
     </div>
-    <div style="border-top:1px solid var(--line);margin:24px 0 14px;"></div>
-    <div style="display:flex;justify-content:center">
-      <button class="action-btn" id="home-options-btn" style="width:auto;border-radius:999px;padding:7px 18px;font-size:13px;margin:0">Data</button>
+    <div style="padding-top:14px">
+      <button class="home-footer-link" id="home-options-btn">data ›</button>
     </div>
   `;
 
