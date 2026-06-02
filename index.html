@@ -2734,6 +2734,7 @@ function renderSettings() {
   const lastBackupStr = metaStore.lastBackup
     ? new Date(metaStore.lastBackup).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     : 'never';
+  const gistCfg = loadGistConfig();
 
   container.innerHTML = `
     <div class="date-line">Configuration</div>
@@ -2757,27 +2758,40 @@ function renderSettings() {
       <button class="action-btn" id="export-btn" style="flex:1;margin:0">Export data (JSON)</button>
     </div>
     <button class="action-btn danger" id="wipe-btn">Delete all data</button>
-    <div class="section-label" style="margin-top:24px">Gist Backup</div>
+    <div class="section-label" style="margin-top:24px">Sync</div>
     <details class="help">
       <summary>Auto-backup to GitHub Gist</summary>
       <div class="body">
-        Enter a GitHub personal access token with <strong>gist</strong> scope. Your data will be backed up to a private gist and refreshed automatically each day when you open the app.<br><br>
+        Enter a GitHub personal access token with <strong>gist</strong> scope. Your data will be backed up to a private gist automatically each day when you open the app.<br><br>
         Create a token at <strong>github.com → Settings → Developer settings → Personal access tokens</strong>. Only the <em>gist</em> permission is needed.
       </div>
     </details>
-    <div style="display:flex;gap:8px;margin-bottom:8px">
+    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:stretch">
       <input type="password" id="gist-token-input" class="action-btn" placeholder="GitHub token (ghp_…)" style="flex:1;margin:0;font-family:monospace;font-size:13px" />
-      <button class="action-btn" id="gist-save-token-btn" style="flex:0 0 auto;margin:0;width:auto;padding-left:16px;padding-right:16px">Save token</button>
+      <button class="action-btn" id="gist-connect-btn" style="flex:0 0 auto;margin:0;width:44px;font-size:18px" title="Connect">⇌</button>
+      <button class="action-btn" id="gist-disconnect-btn" style="flex:0 0 auto;margin:0;width:44px;font-size:18px" ${gistCfg.token ? '' : 'disabled'} title="Disconnect">✕</button>
     </div>
-    <button class="action-btn" id="gist-backup-btn" ${(() => { const c = loadGistConfig(); return c.token ? '' : 'disabled'; })()}>Backup to Gist now</button>
-    ${(() => {
-      const c = loadGistConfig();
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="action-btn" id="gist-upload-btn" style="flex:1;margin:0${gistCfg.gistId && !gistCfg.isUploadDevice ? ';opacity:0.4' : ''}" ${!gistCfg.gistId ? 'disabled' : ''}>↑ Upload</button>
+      <button class="action-btn" id="gist-download-btn" style="flex:1;margin:0" ${!gistCfg.gistId ? 'disabled' : ''}>↓ Download</button>
+    </div>
+    ${gistCfg.gistId ? `
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14px;font-family:var(--mono);color:var(--ink);cursor:pointer">
+        <input type="checkbox" id="gist-upload-device" ${gistCfg.isUploadDevice ? 'checked' : ''} />
+        This is my upload device
+      </label>
+    ` : ''}
+    <div style="font-size:13px;padding:8px 0;color:var(--stone)">${(() => {
       const sizeMB = (new Blob([JSON.stringify(buildExportData())]).size / 1048576).toFixed(2);
-      const sizeWarn = sizeMB >= 9 ? ` <strong style="color:var(--red)">⚠ ${sizeMB} MB — near 10 MB limit</strong>` : ` (${sizeMB} MB)`;
-      if (!c.gistId) return `<div class="help" style="font-size:13px;padding:8px 0;color:var(--stone)">Backup size:${sizeWarn}</div>`;
-      const when = c.lastGistAt ? new Date(c.lastGistAt).toLocaleString(undefined, { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : 'unknown';
-      return `<div class="help" style="font-size:13px;padding:8px 0;color:var(--stone)">Last gist backup: ${when}${sizeWarn}</div>`;
-    })()}
+      const sizeStr = parseFloat(sizeMB) >= 9
+        ? `<strong style="color:var(--red)">⚠ ${sizeMB} MB — near limit</strong>`
+        : `${sizeMB} MB`;
+      if (!gistCfg.gistId) return `Local data: ${sizeStr} · not connected`;
+      const when = gistCfg.lastGistAt
+        ? new Date(gistCfg.lastGistAt).toLocaleString(undefined, { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' })
+        : 'never';
+      return `Connected · last upload: ${when} · ${sizeStr}`;
+    })()}</div>
   `;
 
   container.querySelector('#export-btn').addEventListener('click', () => {
@@ -2787,27 +2801,55 @@ function renderSettings() {
   });
 
   const tokenInput = container.querySelector('#gist-token-input');
-  const gistCfgNow = loadGistConfig();
-  if (gistCfgNow.token) tokenInput.value = gistCfgNow.token;
+  if (gistCfg.token) tokenInput.value = gistCfg.token;
 
-  container.querySelector('#gist-save-token-btn').addEventListener('click', () => {
+  container.querySelector('#gist-connect-btn').addEventListener('click', async () => {
     const token = tokenInput.value.trim();
     if (!token) { alert('Paste a GitHub token first.'); return; }
-    const cfg = loadGistConfig();
-    cfg.token = token;
-    saveGistConfig(cfg);
-    renderSettings();
-    showSaved('token saved');
+    const btn = container.querySelector('#gist-connect-btn');
+    btn.textContent = '…'; btn.disabled = true;
+    const ok = await gistConnect(token);
+    if (ok) { showSaved('connected'); renderSettings(); }
+    else { btn.textContent = '⇌'; btn.disabled = false; }
   });
 
-  container.querySelector('#gist-backup-btn').addEventListener('click', async () => {
-    const btn = container.querySelector('#gist-backup-btn');
-    btn.disabled = true;
-    btn.textContent = 'Backing up…';
-    const ok = await backupToGist({ silent: false });
-    if (ok) { showSaved('backed up to gist'); renderSettings(); }
-    else { btn.disabled = false; btn.textContent = 'Backup to Gist now'; }
+  container.querySelector('#gist-disconnect-btn').addEventListener('click', () => {
+    if (!confirm('Disconnect from Gist? Your token and connection will be cleared. Local data is untouched.')) return;
+    saveGistConfig({});
+    renderSettings();
+    showSaved('disconnected');
   });
+
+  container.querySelector('#gist-upload-btn').addEventListener('click', async () => {
+    if (!gistCfg.isUploadDevice) {
+      alert('Upload is only allowed from your designated upload device.\n\nEnable "This is my upload device" in Gist settings if this is your primary device.');
+      return;
+    }
+    const btn = container.querySelector('#gist-upload-btn');
+    btn.disabled = true; btn.textContent = '↑ Uploading…';
+    const ok = await backupToGist({ silent: false });
+    if (ok) { showSaved('uploaded to gist'); renderSettings(); }
+    else { btn.disabled = false; btn.textContent = '↑ Upload'; }
+  });
+
+  container.querySelector('#gist-download-btn').addEventListener('click', async () => {
+    if (!confirm('This will replace ALL local data with the Gist backup.\n\nIf you want to keep your current data, cancel and export a JSON backup first.')) return;
+    const btn = container.querySelector('#gist-download-btn');
+    btn.disabled = true; btn.textContent = '↓ Downloading…';
+    const ok = await restoreFromGist();
+    if (ok) { showSaved('restored from gist'); renderSettings(); }
+    else { btn.disabled = false; btn.textContent = '↓ Download'; }
+  });
+
+  const uploadToggle = container.querySelector('#gist-upload-device');
+  if (uploadToggle) {
+    uploadToggle.addEventListener('change', () => {
+      const cfg = loadGistConfig();
+      cfg.isUploadDevice = uploadToggle.checked;
+      saveGistConfig(cfg);
+      renderSettings();
+    });
+  }
   container.querySelector('#import-input').addEventListener('change', async e => {
     const file = e.target.files[0];
     if (!file) return;
@@ -2865,66 +2907,126 @@ function exportJSON() {
   download(`nagi-${todayKey()}.json`, JSON.stringify(data, null, 2), 'application/json');
 }
 
+async function gistConnect(token) {
+  const headers = { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' };
+  try {
+    const resp = await fetch('https://api.github.com/gists?per_page=100', { headers });
+    if (!resp.ok) { alert(`Could not connect to GitHub: ${resp.status}`); return false; }
+    const gists = await resp.json();
+    const found = gists.find(g => g.files && g.files['nagi-backup.json']);
+    let gistId;
+    if (found) {
+      gistId = found.id;
+    } else {
+      const cr = await fetch('https://api.github.com/gists', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: 'nagi backup', public: false, files: { 'nagi-backup.json': { content: '{}' } } }),
+      });
+      if (!cr.ok) { alert(`Could not create Gist: ${cr.status}`); return false; }
+      gistId = (await cr.json()).id;
+    }
+    const cfg = loadGistConfig();
+    cfg.token = token;
+    cfg.gistId = gistId;
+    saveGistConfig(cfg);
+    return true;
+  } catch(e) { alert(`Connection failed: ${e.message}`); return false; }
+}
+
+async function restoreFromGist() {
+  const cfg = loadGistConfig();
+  if (!cfg.token || !cfg.gistId) { alert('Not connected to a Gist.'); return false; }
+  try {
+    const resp = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
+      headers: { 'Authorization': `token ${cfg.token}`, 'Accept': 'application/vnd.github+json' },
+    });
+    if (!resp.ok) { alert(`Could not fetch Gist: ${resp.status}`); return false; }
+    const gist = await resp.json();
+    const file = gist.files && gist.files['nagi-backup.json'];
+    if (!file) { alert('No nagi-backup.json found in Gist.'); return false; }
+    let content = file.content;
+    if (file.truncated) {
+      const raw = await fetch(file.raw_url);
+      content = await raw.text();
+    }
+    const data = JSON.parse(content);
+    if (data.version !== 5) { alert('Unrecognized backup format (expected version 5).'); return false; }
+    if (data.meta)  { metaStore  = { ...META_STORE_DEFAULTS,  ...data.meta };  persistMeta(); }
+    if (data.hama)  { hamaStore  = { ...HAMA_STORE_DEFAULTS,  history: data.hama  || {} }; persistHama(); }
+    if (data.sleep) { sleepStore = { ...SLEEP_STORE_DEFAULTS, history: data.sleep || {} }; persistSleep(); }
+    if (data.calm)  { calmStore  = { ...CALM_STORE_DEFAULTS,  narrations: data.calm || {} }; persistCalm(); }
+    if (data.toolkit) {
+      saveTkThought(data.toolkit.thought     || []);
+      saveTkSituation(data.toolkit.situation || []);
+      saveTkValues(data.toolkit.values       || []);
+      saveTkExp(data.toolkit.exposure        || []);
+    }
+    return true;
+  } catch(e) { alert(`Restore failed: ${e.message}`); return false; }
+}
+
 async function backupToGist({ silent = false } = {}) {
   const cfg = loadGistConfig();
-  if (!cfg.token) {
-    if (!silent) alert('No GitHub token configured. Add one in Settings → Gist Backup.');
+  if (!cfg.token || !cfg.gistId) {
+    if (!silent) alert('Not connected to a Gist. Click ⇌ to connect in Settings → Gist Backup.');
     return false;
   }
   const payload = JSON.stringify(buildExportData(), null, 2);
-  const sizeMB = new Blob([payload]).size / 1048576;
+  const localSize = new Blob([payload]).size;
+  const sizeMB = localSize / 1048576;
   if (sizeMB >= 9) {
     if (!silent) alert(`Your backup is ${sizeMB.toFixed(1)} MB — close to GitHub Gist's 10 MB limit. Consider exporting and clearing old data.`);
     else showSaved('⚠ backup near limit');
   }
-  const body = {
-    description: 'nagi backup',
-    public: false,
-    files: { 'nagi-backup.json': { content: payload } },
-  };
   const headers = {
     'Authorization': `token ${cfg.token}`,
     'Accept': 'application/vnd.github+json',
     'Content-Type': 'application/json',
   };
   try {
-    let resp;
-    if (cfg.gistId) {
-      resp = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
-        method: 'PATCH', headers, body: JSON.stringify(body),
-      });
-      if (resp.status === 404) {
-        cfg.gistId = null;
-        resp = await fetch('https://api.github.com/gists', {
-          method: 'POST', headers, body: JSON.stringify(body),
-        });
+    const metaResp = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
+      headers: { 'Authorization': `token ${cfg.token}`, 'Accept': 'application/vnd.github+json' },
+    });
+    if (metaResp.ok) {
+      const metaData = await metaResp.json();
+      const remoteFile = metaData.files && metaData.files['nagi-backup.json'];
+      if (remoteFile && remoteFile.size > 0 && localSize < remoteFile.size * 0.6) {
+        const localKB  = (localSize / 1024).toFixed(0);
+        const remoteKB = (remoteFile.size / 1024).toFixed(0);
+        if (silent) {
+          alert(`Auto-backup skipped: your local data (${localKB} KB) is much smaller than the Gist backup (${remoteKB} KB).\n\nPlease upload manually or export a JSON backup first.`);
+          return false;
+        } else {
+          if (!confirm(`Your local data (${localKB} KB) is much smaller than the existing Gist backup (${remoteKB} KB).\n\nThis may overwrite a more complete copy. Cancel and export a JSON backup first if unsure.`)) return false;
+        }
       }
-    } else {
-      resp = await fetch('https://api.github.com/gists', {
-        method: 'POST', headers, body: JSON.stringify(body),
-      });
     }
+  } catch(_) {}
+  try {
+    const resp = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ description: 'nagi backup', public: false, files: { 'nagi-backup.json': { content: payload } } }),
+    });
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
-      if (!silent) alert(`Gist backup failed: ${err.message || resp.status}`);
+      if (!silent) alert(`Gist upload failed: ${err.message || resp.status}`);
       return false;
     }
-    const result = await resp.json();
-    cfg.gistId = result.id;
     cfg.lastGistAt = new Date().toISOString();
     saveGistConfig(cfg);
     metaStore.lastBackup = cfg.lastGistAt;
     persistMeta();
     return true;
   } catch(e) {
-    if (!silent) alert(`Gist backup failed: ${e.message}`);
+    if (!silent) alert(`Gist upload failed: ${e.message}`);
     return false;
   }
 }
 
 async function maybeAutoBackupToGist() {
   const cfg = loadGistConfig();
-  if (!cfg.token) return;
+  if (!cfg.token || !cfg.gistId || !cfg.isUploadDevice) return;
   const last = cfg.lastGistAt ? new Date(cfg.lastGistAt) : null;
   const hoursAgo = last ? (Date.now() - last.getTime()) / 36e5 : Infinity;
   if (hoursAgo < 23) return;
