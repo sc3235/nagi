@@ -2752,10 +2752,10 @@ function renderSettings() {
     </details>
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <label class="file-label" style="flex:1;margin:0">
-        Import data (JSON)
+        Import (JSON)
         <input type="file" id="import-input" accept="application/json,.json" />
       </label>
-      <button class="action-btn" id="export-btn" style="flex:1;margin:0">Export data (JSON)</button>
+      <button class="action-btn" id="export-btn" style="flex:1;margin:0">Export (JSON)</button>
     </div>
     <button class="action-btn danger" id="wipe-btn">Delete all data</button>
     <div class="section-label" style="margin-top:24px">Sync</div>
@@ -2913,7 +2913,10 @@ async function gistConnect(token) {
     const resp = await fetch('https://api.github.com/gists?per_page=100', { headers });
     if (!resp.ok) { alert(`Could not connect to GitHub: ${resp.status}`); return false; }
     const gists = await resp.json();
-    const found = gists.find(g => g.files && g.files['nagi-backup.json']);
+    const matches = gists.filter(g => g.files && g.files['nagi-backup.json']);
+    const found = matches.reduce((best, g) =>
+      (g.files['nagi-backup.json'].size > (best?.files['nagi-backup.json'].size ?? -1)) ? g : best
+    , null);
     let gistId;
     if (found) {
       gistId = found.id;
