@@ -1957,6 +1957,7 @@
     cursor: pointer; transition: background 0.15s;
   }
   .chart-quick-btn:active { background: var(--bg-elev); }
+  .chart-today-note-row { text-align: right; font-family: var(--mono); font-size: 10px; color: var(--ink-faint); font-style: italic; margin-top: -14px; margin-bottom: 20px; }
   .chart-section-label {
     font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em;
     text-transform: uppercase; color: var(--ink-faint);
@@ -2341,6 +2342,7 @@ function showSaved(msg) {
 const dateKey = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const todayKey = () => dateKey();
+const yesterdayKey = () => { const d = new Date(); d.setDate(d.getDate() - 1); return dateKey(d); };
 function streakFor(historyObj, predicate) {
   let streak = 0;
   const d = new Date();
@@ -5175,7 +5177,11 @@ function renderSleepChart() {
   [_sleepAggrLineChart, _sleepAggrBarChart, _sleepAllBarChart, _sleepItemLineChart, _sleepItemBarChart]
     .forEach(c => { if (c) c.destroy(); });
   _sleepAggrLineChart = _sleepAggrBarChart = _sleepAllBarChart = _sleepItemLineChart = _sleepItemBarChart = null;
-  chartDefaultDates(sleepChartState);
+  if (!sleepChartState.endDate) {
+    sleepChartState.endDate = yesterdayKey();
+    const d = new Date(); d.setDate(d.getDate() - 1); d.setMonth(d.getMonth() - 1);
+    sleepChartState.startDate = dateKey(d);
+  }
   const allItems = SLEEP_RANGES.flatMap(r => r.items);
   if (!sleepChartState.metric) sleepChartState.metric = allItems[0].id;
   const selIdx  = allItems.findIndex(it => it.id === sleepChartState.metric);
@@ -5195,6 +5201,7 @@ function renderSleepChart() {
         <input type="date" class="chart-date-input" id="sl-ce" value="${sleepChartState.endDate}">
       </div>
     </div>
+    ${sleepChartState.endDate === todayKey() ? '<div class="chart-today-note-row">today may be incomplete</div>' : ''}
     <div class="chart-section-label">Aggregate</div>
     <div class="chart-panel">
       <div class="chart-panel-title">Check count vs. time</div>
@@ -5206,7 +5213,7 @@ function renderSleepChart() {
     </div>
     <div class="chart-section-label">Detailed</div>
     <div class="chart-panel">
-      <div class="chart-panel-title">Avg check rate by item (tap to select)</div>
+      <div class="chart-panel-title">Check rate by item (tap to select)</div>
       <div id="sl-all-wrap" style="position:relative;height:${allItems.length * 28}px">
         <canvas id="sl-all-bc"></canvas>
       </div>
