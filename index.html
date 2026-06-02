@@ -1925,10 +1925,12 @@
   .sleep-edit-group-label:first-child { margin-top: 4px; }
   /* ---------- Chart panels ---------- */
   .chart-range-row {
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
     font-family: var(--mono); font-size: 12px; color: var(--ink-dim);
     margin-bottom: 20px;
   }
+  .chart-range-btns { display: flex; align-items: center; gap: 8px; }
+  .chart-range-dates { display: flex; align-items: center; gap: 8px; }
   .chart-date-input {
     font-family: var(--mono); font-size: 12px;
     border: 1px solid var(--line); border-radius: 8px;
@@ -5079,35 +5081,39 @@ function renderHamaChart() {
     <div class="date-line date-line-center">HAM-A</div>
     <h1 class="greeting">Charts<em>.</em></h1>
     <div class="chart-range-row">
-      <input type="date" class="chart-date-input" id="hama-cs" value="${hamaChartState.startDate}">
-      <span>to</span>
-      <input type="date" class="chart-date-input" id="hama-ce" value="${hamaChartState.endDate}">
-      <button class="chart-quick-btn" id="hama-1m">1m</button>
-      <button class="chart-quick-btn" id="hama-3m">3m</button>
-      <button class="chart-quick-btn" id="hama-1y">1y</button>
+      <div class="chart-range-btns">
+        <button class="chart-quick-btn" id="hama-1y">1Y</button>
+        <button class="chart-quick-btn" id="hama-3m">3M</button>
+        <button class="chart-quick-btn" id="hama-1m">1M</button>
+      </div>
+      <div class="chart-range-dates">
+        <input type="date" class="chart-date-input" id="hama-cs" value="${hamaChartState.startDate}">
+        <span>to</span>
+        <input type="date" class="chart-date-input" id="hama-ce" value="${hamaChartState.endDate}">
+      </div>
     </div>
     <div class="chart-section-label">Aggregate</div>
     <div class="chart-panel">
-      <div class="chart-panel-title">Total score over time</div>
+      <div class="chart-panel-title">HAM-A score vs. time</div>
       <canvas id="hama-aggr-lc"></canvas>
     </div>
     <div class="chart-panel">
-      <div class="chart-panel-title">Avg total score by weekday</div>
+      <div class="chart-panel-title">HAM-A score vs. weekday</div>
       <canvas id="hama-aggr-bc"></canvas>
     </div>
     <div class="chart-section-label">Detailed</div>
     <div class="chart-panel">
-      <div class="chart-panel-title">Avg score by symptom — click to select</div>
+      <div class="chart-panel-title">Avg score by symptom (tap to select)</div>
       <div id="hama-all-wrap" style="position:relative;height:${SYMPTOMS.length * 28}px">
         <canvas id="hama-all-bc"></canvas>
       </div>
     </div>
     <div class="chart-panel">
-      <div class="chart-panel-title">${escapeHtml(SYMPTOMS[mi].name)} over time</div>
+      <div class="chart-panel-title">${escapeHtml(SYMPTOMS[mi].name)} vs. time</div>
       <canvas id="hama-item-lc"></canvas>
     </div>
     <div class="chart-panel">
-      <div class="chart-panel-title">${escapeHtml(SYMPTOMS[mi].name)} avg by weekday</div>
+      <div class="chart-panel-title">${escapeHtml(SYMPTOMS[mi].name)} vs. weekday</div>
       <canvas id="hama-item-bc"></canvas>
     </div>`;
   document.getElementById('hama-cs').addEventListener('change', e => { hamaChartState.startDate = e.target.value; renderHamaChart(); });
@@ -5178,35 +5184,39 @@ function renderSleepChart() {
     <div class="date-line date-line-center">Sleep</div>
     <h1 class="greeting">Charts<em>.</em></h1>
     <div class="chart-range-row">
-      <input type="date" class="chart-date-input" id="sl-cs" value="${sleepChartState.startDate}">
-      <span>to</span>
-      <input type="date" class="chart-date-input" id="sl-ce" value="${sleepChartState.endDate}">
-      <button class="chart-quick-btn" id="sl-1m">1m</button>
-      <button class="chart-quick-btn" id="sl-3m">3m</button>
-      <button class="chart-quick-btn" id="sl-1y">1y</button>
+      <div class="chart-range-btns">
+        <button class="chart-quick-btn" id="sl-1y">1Y</button>
+        <button class="chart-quick-btn" id="sl-3m">3M</button>
+        <button class="chart-quick-btn" id="sl-1m">1M</button>
+      </div>
+      <div class="chart-range-dates">
+        <input type="date" class="chart-date-input" id="sl-cs" value="${sleepChartState.startDate}">
+        <span>to</span>
+        <input type="date" class="chart-date-input" id="sl-ce" value="${sleepChartState.endDate}">
+      </div>
     </div>
     <div class="chart-section-label">Aggregate</div>
     <div class="chart-panel">
-      <div class="chart-panel-title">Tasks accomplished over time</div>
+      <div class="chart-panel-title">Check count vs. time</div>
       <canvas id="sl-aggr-lc"></canvas>
     </div>
     <div class="chart-panel">
-      <div class="chart-panel-title">Avg tasks accomplished by weekday</div>
+      <div class="chart-panel-title">Check count vs. weekday</div>
       <canvas id="sl-aggr-bc"></canvas>
     </div>
     <div class="chart-section-label">Detailed</div>
     <div class="chart-panel">
-      <div class="chart-panel-title">Avg completion rate by item — click to select</div>
+      <div class="chart-panel-title">Avg check rate by item (tap to select)</div>
       <div id="sl-all-wrap" style="position:relative;height:${allItems.length * 28}px">
         <canvas id="sl-all-bc"></canvas>
       </div>
     </div>
     <div class="chart-panel">
-      <div class="chart-panel-title">${escapeHtml(selItem.label)} over time</div>
+      <div class="chart-panel-title">${escapeHtml(selItem.label)}: vs. time</div>
       <canvas id="sl-item-lc"></canvas>
     </div>
     <div class="chart-panel">
-      <div class="chart-panel-title">${escapeHtml(selItem.label)} avg by weekday</div>
+      <div class="chart-panel-title">${escapeHtml(selItem.label)}: vs. weekday</div>
       <canvas id="sl-item-bc"></canvas>
     </div>`;
   document.getElementById('sl-cs').addEventListener('change', e => { sleepChartState.startDate = e.target.value; renderSleepChart(); });
