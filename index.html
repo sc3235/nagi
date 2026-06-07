@@ -2271,6 +2271,7 @@ const SLEEP_ITEM_COUNT = SLEEP_RANGES.reduce((n, r) => n + r.items.filter(it => 
 // ---------- Stores ----------
 let metaStore, hamaStore, calmStore, sleepStore;
 
+let hamaState  = { tab: 'today' };
 let sleepState = { tab: 'today', rangeIdx: 0, dayOffset: 0, editId: null };
 let hamaChartState  = { startDate: null, endDate: null, metric: 0 };
 let sleepChartState = { startDate: null, endDate: null, metric: null };
@@ -2508,9 +2509,17 @@ function backupReminderText() {
   return `Last backup was ${days} day${days === 1 ? '' : 's'} ago. Save a fresh copy?`;
 }
 
+// ---------- Render: HAM-A (dispatch) ----------
+function renderHama() {
+  document.getElementById('today-content').innerHTML = '<div id="hama-panel"></div>';
+  if (hamaState.tab === 'today')        renderToday();
+  else if (hamaState.tab === 'history') renderHistory();
+  else                                  renderHamaChart();
+}
+
 // ---------- Render: Today ----------
 function renderToday() {
-  const container = document.getElementById('today-content');
+  const container = document.getElementById('hama-panel');
   const entry = getTodayEntry();
   const allSymptoms = SYMPTOMS.map((s, i) => ({ ...s, index: i }));
   const ratedValues = entry.ratings.filter(r => r != null);
@@ -2623,7 +2632,7 @@ function renderToday() {
 let editState = { key: null, draft: null };
 
 function renderHistory() {
-  const container = document.getElementById('history-content');
+  const container = document.getElementById('hama-panel');
   const keys = Object.keys(hamaStore.history)
     .filter(k => hamaStore.history[k].ratings.some(r => r != null))
     .sort().reverse();
@@ -5079,7 +5088,7 @@ function renderHamaChart() {
   _hamaAggrLineChart = _hamaAggrBarChart = _hamaAllBarChart = _hamaItemLineChart = _hamaItemBarChart = null;
   chartDefaultDates(hamaChartState);
   const mi = hamaChartState.metric;
-  document.getElementById('chart-content').innerHTML = `
+  document.getElementById('hama-panel').innerHTML = `
     <div class="date-line date-line-center">HAM-A</div>
     <h1 class="greeting">Charts<em>.</em></h1>
     <div class="chart-range-row">
@@ -5317,9 +5326,11 @@ function showScreen(name) {
     backBtn.classList.remove('hidden');
     brand.style.display = 'none';
     navTabs.style.display = '';
+    hamaState.tab = 'today';
+    editState = { key: null, draft: null };
     document.querySelectorAll('#nav-tabs button').forEach(b => b.classList.remove('active'));
     document.querySelector('#nav-tabs button[data-view="today"]').classList.add('active');
-    renderToday();
+    renderHama();
   } else if (name === 'calm') {
     document.getElementById('view-calm').classList.add('active');
     backBtn.classList.remove('hidden');
@@ -5381,13 +5392,10 @@ document.getElementById('back-btn').addEventListener('click', () => {
 document.querySelectorAll('#nav-tabs button').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('#nav-tabs button').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     btn.classList.add('active');
-    const view = btn.dataset.view;
-    document.getElementById(`view-${view}`).classList.add('active');
-    if (view === 'today')   renderToday();
-    if (view === 'history') renderHistory();
-    if (view === 'chart')   renderHamaChart();
+    editState = { key: null, draft: null };
+    hamaState.tab = btn.dataset.view;
+    renderHama();
     scrollTopSoon();
   });
 });
