@@ -2511,7 +2511,9 @@ function backupReminderText() {
 
 // ---------- Render: HAM-A (dispatch) ----------
 function renderHama() {
-  document.getElementById('today-content').innerHTML = '<div id="hama-panel"></div>';
+  const tc = document.getElementById('today-content');
+  tc.classList.remove('loading');
+  tc.innerHTML = '<div id="hama-panel"></div>';
   if (hamaState.tab === 'today')        renderToday();
   else if (hamaState.tab === 'history') renderHistory();
   else                                  renderHamaChart();
